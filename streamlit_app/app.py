@@ -1,6 +1,7 @@
 import json
 import sys
 from dataclasses import asdict
+from datetime import datetime, timezone
 from pathlib import Path
 
 import streamlit as st
@@ -24,6 +25,71 @@ from plotting import plotdata_to_figure
 
 
 st.set_page_config(page_title="FullControl Lampshade", layout="wide")
+
+
+_PRESET_VERSION = 1
+
+
+def _ensure_defaults(defaults: dict) -> None:
+    for k, v in defaults.items():
+        if k not in st.session_state:
+            st.session_state[k] = v
+
+
+def _preset_payload() -> dict:
+    keys = [
+        "Output",
+        "Viewer",
+        "Annotations",
+        "Printer_name",
+        "Nozzle_temp",
+        "Bed_temp",
+        "Fan_percent",
+        "Material_flow_percent",
+        "Print_speed_percent",
+        "Design_name",
+        "Height",
+        "Inner_frame_hole_diameter",
+        "Radius_bottom",
+        "Radius_middle",
+        "Radius_top",
+        "Radius_middle_z",
+        "Tip_length",
+        "Star_tips",
+        "Main_bulge",
+        "Secondary_bulges",
+        "Secondary_bulge_count",
+        "Twist_turns",
+        "Inner_frame_height",
+        "Inner_frame_wave_amplitude",
+        "Centre_XY",
+        "zag_min",
+        "zag_max",
+        "zigzag_freq_factor",
+        "zigzag_radius_factor",
+        "zigzag_rounding_radius",
+        "EH",
+        "EW",
+        "initial_print_speed",
+        "main_print_speed",
+        "speedchange_layers",
+        "initial_z_factor",
+    ]
+    return {
+        "version": _PRESET_VERSION,
+        "saved_at": datetime.now(timezone.utc).isoformat(),
+        "values": {k: st.session_state.get(k) for k in keys},
+    }
+
+
+def _apply_preset(preset: dict) -> None:
+    if not isinstance(preset, dict):
+        raise ValueError("Preset is not a JSON object")
+    values = preset.get("values")
+    if not isinstance(values, dict):
+        raise ValueError("Preset missing 'values' object")
+    for k, v in values.items():
+        st.session_state[k] = v
 
 
 def _top_view_radius_figure(radius_mm: float) -> go.Figure:
@@ -139,13 +205,73 @@ def _viewer_presets(viewer_mode: str) -> tuple[int, int]:
 
 
 def _build_params_from_ui() -> LampshadeParams:
+    defaults = {
+        "Output": "Detailed Plot",
+        "Viewer": "Normal viewer",
+        "Annotations": True,
+        "Printer_name": "generic",
+        "Nozzle_temp": 220,
+        "Bed_temp": 40,
+        "Fan_percent": 100,
+        "Material_flow_percent": 100,
+        "Print_speed_percent": 200,
+        "Design_name": "fc_lampshade",
+        "Height": 150,
+        "Inner_frame_hole_diameter": 30,
+        "Radius_bottom": 34,
+        "Radius_middle": 34,
+        "Radius_top": 34,
+        "Radius_middle_z": 50,
+        "Tip_length": 20,
+        "Star_tips": 6,
+        "Main_bulge": 22.5,
+        "Secondary_bulges": 15.0,
+        "Secondary_bulge_count": 2,
+        "Twist_turns": 0.0,
+        "Inner_frame_height": 3,
+        "Inner_frame_wave_amplitude": 17.5,
+        "Centre_XY": 104,
+        "zag_min": 1.0,
+        "zag_max": 5.0,
+        "zigzag_freq_factor": 1.0,
+        "zigzag_radius_factor": 1.0,
+        "zigzag_rounding_radius": 0,
+        "EH": 0.2,
+        "EW": 0.5,
+        "initial_print_speed": 500,
+        "main_print_speed": 1500,
+        "speedchange_layers": 5,
+        "initial_z_factor": 0.7,
+    }
+    _ensure_defaults(defaults)
+
     with st.sidebar:
+        with st.expander("Presets", expanded=False):
+            preset_name = st.text_input("Preset name", value=str(st.session_state.get("Design_name", "fc_lampshade")), key="_preset_name")
+            preset_json = json.dumps(_preset_payload(), indent=2, sort_keys=True)
+            st.download_button(
+                "Download preset (.json)",
+                data=preset_json,
+                file_name=f"{preset_name or 'lampshade'}_preset.json",
+                mime="application/json",
+                use_container_width=True,
+            )
+            uploaded = st.file_uploader("Upload preset (.json)", type=["json"], key="_preset_upload")
+            if uploaded is not None:
+                try:
+                    loaded = json.loads(uploaded.getvalue().decode("utf-8"))
+                    _apply_preset(loaded)
+                    st.success("Preset loaded")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Invalid preset: {e}")
+
         generate = st.button("Generate / Update", type="primary", use_container_width=True)
 
         with st.expander("Controls", expanded=True):
-            output = st.selectbox("Output", ["Simple Plot", "Detailed Plot", "GCode"], index=1)
-            viewer_mode = st.selectbox("Viewer", ["Fast viewer", "Normal viewer", "High detail"], index=1)
-            annotations = st.checkbox("Annotations", value=True)
+            output = st.selectbox("Output", ["Simple Plot", "Detailed Plot", "GCode"], key="Output")
+            viewer_mode = st.selectbox("Viewer", ["Fast viewer", "Normal viewer", "High detail"], key="Viewer")
+            annotations = st.checkbox("Annotations", key="Annotations")
             viewer_point_stride, viewer_layer_stride = _viewer_presets(viewer_mode)
 
         st.divider()
@@ -153,62 +279,58 @@ def _build_params_from_ui() -> LampshadeParams:
             printer_name = st.selectbox(
                 "Printer",
                 ["generic", "ultimaker2plus", "prusa_i3", "ender_3", "cr_10", "bambulab_x1", "toolchanger_T"],
-                index=0,
+                key="Printer_name",
             )
-            nozzle_temp = st.number_input("Nozzle °C", min_value=0, max_value=400, value=220, step=1)
-            bed_temp = st.number_input("Bed °C", min_value=0, max_value=150, value=40, step=1)
-            fan_percent = st.number_input("Fan %", min_value=0, max_value=100, value=100, step=1)
-            material_flow_percent = st.number_input("Flow %", min_value=0, max_value=200, value=100, step=1)
-            print_speed_percent = st.number_input("Speed %", min_value=10, max_value=400, value=200, step=5)
-            design_name = st.text_input("Name", value="fc_lampshade")
+            nozzle_temp = st.number_input("Nozzle °C", min_value=0, max_value=400, step=1, key="Nozzle_temp")
+            bed_temp = st.number_input("Bed °C", min_value=0, max_value=150, step=1, key="Bed_temp")
+            fan_percent = st.number_input("Fan %", min_value=0, max_value=100, step=1, key="Fan_percent")
+            material_flow_percent = st.number_input("Flow %", min_value=0, max_value=200, step=1, key="Material_flow_percent")
+            print_speed_percent = st.number_input("Speed %", min_value=10, max_value=400, step=5, key="Print_speed_percent")
+            design_name = st.text_input("Name", key="Design_name")
 
         with st.expander("Geometry", expanded=True):
-            height = st.slider("Height", min_value=100, max_value=200, value=150, step=10)
+            height = st.slider("Height", min_value=100, max_value=200, step=10, key="Height")
 
-            inner_frame_hole_diameter = st.number_input("Frame hole", min_value=0, max_value=200, value=30, step=1)
-            min_bottom_radius = max(10, int((inner_frame_hole_diameter / 2) + 2))
-            radius_bottom = st.number_input(
-                "Radius (bottom)", min_value=min_bottom_radius, max_value=80, value=34, step=1
-            )
-            radius_middle = st.number_input("Radius (middle)", min_value=10, max_value=80, value=34, step=1)
-            radius_top = st.number_input("Radius (top)", min_value=10, max_value=80, value=34, step=1)
+            inner_frame_hole_diameter = st.number_input("Frame hole", min_value=0, max_value=200, step=1, key="Inner_frame_hole_diameter")
+            min_bottom_radius = max(10, int((float(inner_frame_hole_diameter) / 2.0) + 2.0))
+            if float(st.session_state.get("Radius_bottom", 0)) < float(min_bottom_radius):
+                st.session_state["Radius_bottom"] = int(min_bottom_radius)
+            radius_bottom = st.number_input("Radius (bottom)", min_value=int(min_bottom_radius), max_value=80, step=1, key="Radius_bottom")
+            radius_middle = st.number_input("Radius (middle)", min_value=10, max_value=80, step=1, key="Radius_middle")
+            radius_top = st.number_input("Radius (top)", min_value=10, max_value=80, step=1, key="Radius_top")
             radius_middle_z = st.slider(
                 "Middle Z position (%)",
                 min_value=5,
                 max_value=95,
-                value=50,
                 step=1,
                 help="Where along the height the middle radius occurs. 0% = bottom, 100% = top.",
+                key="Radius_middle_z",
             )
 
-            tip_length = st.slider("Tip len", min_value=10, max_value=30, value=20, step=2)
-            star_tips = st.slider("Star tips", min_value=0, max_value=8, value=6, step=1)
-            main_bulge = st.slider("Main bulge", min_value=0.0, max_value=25.0, value=22.5, step=2.5)
-            secondary_bulges = st.slider("2nd bulge", min_value=0.0, max_value=20.0, value=15.0, step=2.5)
-            secondary_bulge_count = st.slider("Sec bulges", min_value=0, max_value=6, value=2, step=1)
-            twist_turns = st.slider("Twist", min_value=-2.0, max_value=2.0, value=0.0, step=0.05)
-            inner_frame_height = st.slider("Frame ht", min_value=0, max_value=10, value=3, step=1)
-            inner_frame_wave_amplitude = st.number_input(
-                "Frame amp", min_value=0.0, max_value=200.0, value=17.5, step=0.5
-            )
-            centre_xy = st.number_input("Centre XY", min_value=0, max_value=500, value=104, step=1)
+            tip_length = st.slider("Tip len", min_value=10, max_value=30, step=2, key="Tip_length")
+            star_tips = st.slider("Star tips", min_value=0, max_value=8, step=1, key="Star_tips")
+            main_bulge = st.slider("Main bulge", min_value=0.0, max_value=25.0, step=2.5, key="Main_bulge")
+            secondary_bulges = st.slider("2nd bulge", min_value=0.0, max_value=20.0, step=2.5, key="Secondary_bulges")
+            secondary_bulge_count = st.slider("Sec bulges", min_value=0, max_value=6, step=1, key="Secondary_bulge_count")
+            twist_turns = st.slider("Twist", min_value=-2.0, max_value=2.0, step=0.05, key="Twist_turns")
+            inner_frame_height = st.slider("Frame ht", min_value=0, max_value=10, step=1, key="Inner_frame_height")
+            inner_frame_wave_amplitude = st.number_input("Frame amp", min_value=0.0, max_value=200, step=0.5, key="Inner_frame_wave_amplitude")
+            centre_xy = st.number_input("Centre XY", min_value=0, max_value=500, step=1, key="Centre_XY")
 
         with st.expander("Zigzags", expanded=True):
-            zigzag_min = st.slider("Zigzag min", min_value=0.0, max_value=6.0, value=1.0, step=0.25)
-            zigzag_max = st.slider("Zigzag max", min_value=0.0, max_value=10.0, value=5.0, step=0.25)
-            zigzag_freq_factor = st.slider("Zigzag freq", min_value=0.25, max_value=3.0, value=1.0, step=0.05)
-            zigzag_radius_factor = st.slider("Zigzag radius", min_value=0.0, max_value=3.0, value=1.0, step=0.05)
-            zigzag_rounding_radius = st.slider("Zigzag round", min_value=0, max_value=10, value=0, step=1)
+            zigzag_min = st.slider("Zigzag min", min_value=0.0, max_value=6.0, step=0.25, key="zag_min")
+            zigzag_max = st.slider("Zigzag max", min_value=0.0, max_value=10.0, step=0.25, key="zag_max")
+            zigzag_freq_factor = st.slider("Zigzag freq", min_value=0.25, max_value=3.0, step=0.05, key="zigzag_freq_factor")
+            zigzag_radius_factor = st.slider("Zigzag radius", min_value=0.0, max_value=3.0, step=0.05, key="zigzag_radius_factor")
+            zigzag_rounding_radius = st.slider("Zigzag round", min_value=0, max_value=10, step=1, key="zigzag_rounding_radius")
 
         with st.expander("Advanced", expanded=False):
-            eh = st.number_input("Layer height (EH)", min_value=0.05, max_value=2.0, value=0.2, step=0.05)
-            ew = st.number_input("Line width (EW)", min_value=0.1, max_value=2.0, value=0.5, step=0.05)
-            initial_print_speed = st.number_input(
-                "Initial speed", min_value=10, max_value=5000, value=500, step=10
-            )
-            main_print_speed = st.number_input("Main speed", min_value=10, max_value=10000, value=1500, step=10)
-            speedchange_layers = st.number_input("Speedchange layers", min_value=0, max_value=50, value=5, step=1)
-            initial_z_factor = st.number_input("Initial z factor", min_value=0.0, max_value=1.0, value=0.7, step=0.05)
+            eh = st.number_input("Layer height (EH)", min_value=0.05, max_value=2.0, step=0.05, key="EH")
+            ew = st.number_input("Line width (EW)", min_value=0.1, max_value=2.0, step=0.05, key="EW")
+            initial_print_speed = st.number_input("Initial speed", min_value=10, max_value=5000, step=10, key="initial_print_speed")
+            main_print_speed = st.number_input("Main speed", min_value=10, max_value=10000, step=10, key="main_print_speed")
+            speedchange_layers = st.number_input("Speedchange layers", min_value=0, max_value=50, step=1, key="speedchange_layers")
+            initial_z_factor = st.number_input("Initial z factor", min_value=0.0, max_value=1.0, step=0.05, key="initial_z_factor")
 
     st.markdown("### Preview")
     dim_col1, dim_col2 = st.columns(2, gap="large")
