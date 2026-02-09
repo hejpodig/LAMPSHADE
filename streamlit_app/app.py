@@ -60,12 +60,19 @@ def _top_view_radius_figure(radius_mm: float) -> go.Figure:
     return fig
 
 
-def _profile_height_and_radii_figure(height_mm: float, r_bottom_mm: float, r_middle_mm: float, r_top_mm: float) -> go.Figure:
+def _profile_height_and_radii_figure(
+    height_mm: float,
+    r_bottom_mm: float,
+    r_middle_mm: float,
+    r_top_mm: float,
+    middle_z_fraction: float,
+) -> go.Figure:
     h = max(1.0, float(height_mm))
     rb = max(1.0, float(r_bottom_mm))
     rm = max(1.0, float(r_middle_mm))
     rt = max(1.0, float(r_top_mm))
     rmax = max(rb, rm, rt)
+    mz = max(0.0, min(1.0, float(middle_z_fraction)))
 
     fig = go.Figure()
 
@@ -110,7 +117,7 @@ def _profile_height_and_radii_figure(height_mm: float, r_bottom_mm: float, r_mid
         )
 
     _add_radius(0.0, rb, "Bottom radius")
-    _add_radius(0.5 * h, rm, "Middle radius")
+    _add_radius(mz * h, rm, "Middle radius")
     _add_radius(h, rt, "Top radius")
 
     fig.update_layout(
@@ -165,6 +172,14 @@ def _build_params_from_ui() -> LampshadeParams:
             )
             radius_middle = st.number_input("Radius (middle)", min_value=10, max_value=80, value=34, step=1)
             radius_top = st.number_input("Radius (top)", min_value=10, max_value=80, value=34, step=1)
+            radius_middle_z = st.slider(
+                "Middle Z position (%)",
+                min_value=5,
+                max_value=95,
+                value=50,
+                step=1,
+                help="Where along the height the middle radius occurs. 0% = bottom, 100% = top.",
+            )
 
             tip_length = st.slider("Tip len", min_value=10, max_value=30, value=20, step=2)
             star_tips = st.slider("Star tips", min_value=0, max_value=8, value=6, step=1)
@@ -203,7 +218,7 @@ def _build_params_from_ui() -> LampshadeParams:
     with dim_col2:
         st.caption("Profile view")
         st.plotly_chart(
-            _profile_height_and_radii_figure(height, radius_bottom, radius_middle, radius_top),
+            _profile_height_and_radii_figure(height, radius_bottom, radius_middle, radius_top, radius_middle_z / 100.0),
             use_container_width=True,
         )
 
@@ -227,6 +242,7 @@ def _build_params_from_ui() -> LampshadeParams:
         Radius_bottom=int(radius_bottom),
         Radius_middle=int(radius_middle),
         Radius_top=int(radius_top),
+        Radius_middle_z_fraction=float(radius_middle_z) / 100.0,
         Tip_length=int(tip_length),
         Star_tips=int(star_tips),
         Main_bulge=float(main_bulge),
