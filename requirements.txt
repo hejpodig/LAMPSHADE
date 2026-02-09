@@ -1,0 +1,5 @@
+# Streamlit UI
+streamlit>=1.31
+
+# Install FullControl from the local source folder (brings plotly/numpy/pydantic deps)
+-e ./fullcontrol
