@@ -34,10 +34,8 @@ def _viewer_presets(viewer_mode: str) -> tuple[int, int]:
 
 
 def _build_params_from_ui() -> LampshadeParams:
-    col_controls, col_preview = st.columns([1, 2], gap="large")
-
-    with col_controls:
-        st.markdown("### Controls")
+    with st.sidebar:
+        st.markdown("## Controls")
 
         output = st.selectbox("Output", ["Simple Plot", "Detailed Plot", "GCode"], index=1)
         viewer_mode = st.selectbox("Viewer", ["Fast viewer", "Normal viewer", "High detail"], index=1)
@@ -95,14 +93,13 @@ def _build_params_from_ui() -> LampshadeParams:
             speedchange_layers = st.number_input("Speedchange layers", min_value=0, max_value=50, value=5, step=1)
             initial_z_factor = st.number_input("Initial z factor", min_value=0.0, max_value=1.0, value=0.7, step=0.05)
 
-        generate = st.button("Generate / Update", type="primary")
+        generate = st.button("Generate / Update", type="primary", use_container_width=True)
 
-    with col_preview:
-        st.markdown("### Preview")
-        if "last_params" not in st.session_state:
-            st.session_state.last_params = None
-        if "last_result" not in st.session_state:
-            st.session_state.last_result = None
+    st.markdown("### Preview")
+    if "last_params" not in st.session_state:
+        st.session_state.last_params = None
+    if "last_result" not in st.session_state:
+        st.session_state.last_result = None
 
     params = LampshadeParams(
         Output=output,
@@ -148,39 +145,37 @@ def _build_params_from_ui() -> LampshadeParams:
         generate = True
 
     if generate:
-        with col_preview:
-            with st.spinner("Generating..."):
-                try:
-                    steps, plot_controls, gcode_controls = build_lampshade_steps(params)
-                    st.session_state.last_params = params_key
+        with st.spinner("Generating..."):
+            try:
+                steps, plot_controls, gcode_controls = build_lampshade_steps(params)
+                st.session_state.last_params = params_key
 
-                    if params.Output in ["Simple Plot", "Detailed Plot"]:
-                        plot_controls.raw_data = True
-                        plot_data = fc.transform(steps, "plot", plot_controls)
-                        fig = plotdata_to_figure(plot_data, plot_controls)
-                        st.session_state.last_result = {"type": "plot", "fig": fig}
-                    else:
-                        gcode_str = fc.transform(steps, "gcode", gcode_controls)
-                        st.session_state.last_result = {"type": "gcode", "gcode": gcode_str}
-                except Exception as e:
-                    st.session_state.last_result = {"type": "error", "error": repr(e)}
+                if params.Output in ["Simple Plot", "Detailed Plot"]:
+                    plot_controls.raw_data = True
+                    plot_data = fc.transform(steps, "plot", plot_controls)
+                    fig = plotdata_to_figure(plot_data, plot_controls)
+                    st.session_state.last_result = {"type": "plot", "fig": fig}
+                else:
+                    gcode_str = fc.transform(steps, "gcode", gcode_controls)
+                    st.session_state.last_result = {"type": "gcode", "gcode": gcode_str}
+            except Exception as e:
+                st.session_state.last_result = {"type": "error", "error": repr(e)}
 
-    with col_preview:
-        result = st.session_state.last_result
-        if result is None:
-            st.info("Click Generate / Update")
-        elif result["type"] == "error":
-            st.error(result["error"])
-        elif result["type"] == "plot":
-            st.plotly_chart(result["fig"], use_container_width=True)
-        elif result["type"] == "gcode":
-            st.download_button(
-                "Download GCode",
-                data=result["gcode"],
-                file_name=f"{params.Design_name}.gcode",
-                mime="text/plain",
-            )
-            st.text_area("GCode preview", value=result["gcode"][:20000], height=400)
+    result = st.session_state.last_result
+    if result is None:
+        st.info("Click Generate / Update")
+    elif result["type"] == "error":
+        st.error(result["error"])
+    elif result["type"] == "plot":
+        st.plotly_chart(result["fig"], use_container_width=True)
+    elif result["type"] == "gcode":
+        st.download_button(
+            "Download GCode",
+            data=result["gcode"],
+            file_name=f"{params.Design_name}.gcode",
+            mime="text/plain",
+        )
+        st.text_area("GCode preview", value=result["gcode"][:20000], height=400)
 
     return params
 
