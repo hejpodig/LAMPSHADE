@@ -35,12 +35,13 @@ def _viewer_presets(viewer_mode: str) -> tuple[int, int]:
 
 def _build_params_from_ui() -> LampshadeParams:
     with st.sidebar:
-        st.markdown("## Controls")
+        generate = st.button("Generate / Update", type="primary", use_container_width=True)
 
-        output = st.selectbox("Output", ["Simple Plot", "Detailed Plot", "GCode"], index=1)
-        viewer_mode = st.selectbox("Viewer", ["Fast viewer", "Normal viewer", "High detail"], index=1)
-        annotations = st.checkbox("Annotations", value=True)
-        viewer_point_stride, viewer_layer_stride = _viewer_presets(viewer_mode)
+        with st.expander("Controls", expanded=True):
+            output = st.selectbox("Output", ["Simple Plot", "Detailed Plot", "GCode"], index=1)
+            viewer_mode = st.selectbox("Viewer", ["Fast viewer", "Normal viewer", "High detail"], index=1)
+            annotations = st.checkbox("Annotations", value=True)
+            viewer_point_stride, viewer_layer_stride = _viewer_presets(viewer_mode)
 
         st.divider()
         with st.expander("Printer", expanded=True):
@@ -89,8 +90,6 @@ def _build_params_from_ui() -> LampshadeParams:
             main_print_speed = st.number_input("Main speed", min_value=10, max_value=10000, value=1500, step=10)
             speedchange_layers = st.number_input("Speedchange layers", min_value=0, max_value=50, value=5, step=1)
             initial_z_factor = st.number_input("Initial z factor", min_value=0.0, max_value=1.0, value=0.7, step=0.05)
-
-        generate = st.button("Generate / Update", type="primary", use_container_width=True)
 
     st.markdown("### Preview")
     if "last_params" not in st.session_state:
