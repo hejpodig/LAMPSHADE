@@ -1,4 +1,5 @@
 import json
+import hashlib
 import sys
 from dataclasses import asdict
 from datetime import datetime, timezone
@@ -88,7 +89,56 @@ def _apply_preset(preset: dict) -> None:
     values = preset.get("values")
     if not isinstance(values, dict):
         raise ValueError("Preset missing 'values' object")
+
+    int_keys = {
+        "Nozzle_temp",
+        "Bed_temp",
+        "Fan_percent",
+        "Material_flow_percent",
+        "Print_speed_percent",
+        "Height",
+        "Inner_frame_hole_diameter",
+        "Radius_bottom",
+        "Radius_middle",
+        "Radius_top",
+        "Radius_middle_z",
+        "Tip_length",
+        "Star_tips",
+        "Secondary_bulge_count",
+        "Inner_frame_height",
+        "Centre_XY",
+        "zigzag_rounding_radius",
+        "initial_print_speed",
+        "main_print_speed",
+        "speedchange_layers",
+    }
+    float_keys = {
+        "Main_bulge",
+        "Secondary_bulges",
+        "Twist_turns",
+        "Inner_frame_wave_amplitude",
+        "zag_min",
+        "zag_max",
+        "zigzag_freq_factor",
+        "zigzag_radius_factor",
+        "EH",
+        "EW",
+        "initial_z_factor",
+    }
+
     for k, v in values.items():
+        if v is None:
+            continue
+        if k in int_keys:
+            try:
+                v = int(v)
+            except Exception:
+                pass
+        elif k in float_keys:
+            try:
+                v = float(v)
+            except Exception:
+                pass
         st.session_state[k] = v
 
 
@@ -264,12 +314,22 @@ def _build_params_from_ui() -> LampshadeParams:
             uploaded = st.file_uploader("Upload preset (.json)", type=["json"], key="_preset_upload")
             if uploaded is not None:
                 try:
-                    loaded = json.loads(uploaded.getvalue().decode("utf-8"))
-                    _apply_preset(loaded)
-                    st.success("Preset loaded")
-                    st.rerun()
+                    raw = uploaded.getvalue()
+                    token = hashlib.sha256(raw).hexdigest()
+                    if st.session_state.get("_preset_upload_token") != token:
+                        loaded = json.loads(raw.decode("utf-8"))
+                        _apply_preset(loaded)
+
+                        # Force a regen so the preview matches the newly loaded settings.
+                        st.session_state["last_params"] = None
+                        st.session_state["last_result"] = None
+
+                        st.session_state["_preset_upload_token"] = token
+                        st.success("Preset loaded")
                 except Exception as e:
                     st.error(f"Invalid preset: {e}")
+            else:
+                st.session_state.pop("_preset_upload_token", None)
 
         generate = st.button("Generate / Update", type="primary", use_container_width=True)
 
