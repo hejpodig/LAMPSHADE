@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Optional
 from math import cos, exp, pi, sin, tau
 
 import fullcontrol as fc
@@ -21,6 +22,9 @@ class LampshadeParams:
 
     Height: int = 150
     Nominal_radius: int = 34
+    Radius_bottom: Optional[int] = None
+    Radius_middle: Optional[int] = None
+    Radius_top: Optional[int] = None
     Tip_length: int = 20
     Star_tips: int = 6
     Main_bulge: float = 22.5
@@ -66,7 +70,18 @@ class LampshadeParams:
 def build_lampshade_steps(params: LampshadeParams):
     target = "visualize" if params.Output in ["Detailed Plot", "Simple Plot"] else "gcode"
 
-    height, r_0, tip_len, n_tip = params.Height, params.Nominal_radius, params.Tip_length, params.Star_tips
+    height, tip_len, n_tip = params.Height, params.Tip_length, params.Star_tips
+    r_bottom = float(params.Radius_bottom if params.Radius_bottom is not None else params.Nominal_radius)
+    r_middle = float(params.Radius_middle if params.Radius_middle is not None else params.Nominal_radius)
+    r_top = float(params.Radius_top if params.Radius_top is not None else params.Nominal_radius)
+
+    def _base_radius(z_fraction: float) -> float:
+        zf = max(0.0, min(1.0, float(z_fraction)))
+        if zf <= 0.5:
+            t = zf / 0.5
+            return r_bottom + (r_middle - r_bottom) * t
+        t = (zf - 0.5) / 0.5
+        return r_middle + (r_top - r_middle) * t
     bulge1, bulge2 = params.Main_bulge, params.Secondary_bulges
     bulge2_count = max(0, int(params.Secondary_bulge_count))
     frame_rad_inner = params.Inner_frame_hole_diameter / 2
@@ -74,7 +89,7 @@ def build_lampshade_steps(params: LampshadeParams):
     amp_1 = params.Inner_frame_wave_amplitude
     centre_xy = params.Centre_XY
 
-    frame_rad_max = r_0 + tip_len + params.frame_overlap
+    frame_rad_max = r_bottom + tip_len + params.frame_overlap
     frame_rad_inner += params.EW / 2
 
     EH = float(params.EH)
@@ -116,6 +131,8 @@ def build_lampshade_steps(params: LampshadeParams):
         twist_angle = (tau * float(params.Twist_turns) * z_fraction) if params.Twist_turns else 0.0
         centre_now = fc.Point(x=centre_xy, y=centre_xy, z=z_now)
         shell_steps, wave_steps = [], []
+
+        r_0 = _base_radius(z_fraction)
 
         for t_now in t_steps_shell[: int((segs_shell_samples / max(n_tip, 1)) / 2) + 1]:
             a_now = params.start_angle + (tau * t_now)
@@ -176,8 +193,7 @@ def build_lampshade_steps(params: LampshadeParams):
             wave_steps.extend(fc.arcXY(centre_now, frame_rad_inner, params.start_angle, pi / max(n_tip, 1), int(64 / max(n_tip, 1))))
             wave_steps.extend(fclab.reflectXYpolar_list(wave_steps, centre_now, params.start_angle + pi / max(n_tip, 1)))
             wave_steps = fc.move_polar(wave_steps, centre_now, 0, tau / max(n_tip, 1), copy=True, copy_quantity=n_tip)
-            if params.Twist_turns:
-                wave_steps = fc.move_polar(wave_steps, centre_now, 0, twist_angle)
+            # Intentionally do NOT apply twist to the inner frame.
 
             steps.append(fc.ExtrusionGeometry(width=EW * params.frame_width_factor, height=EH * params.layer_ratio))
             steps.append(fc.Printer(print_speed=print_speed / (params.frame_width_factor * params.layer_ratio)))

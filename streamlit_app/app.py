@@ -42,7 +42,7 @@ def _top_view_radius_figure(radius_mm: float) -> go.Figure:
         yref="y",
         axref="x",
         ayref="y",
-        text=f"Radius: {r:.0f} mm",
+        text=f"Middle radius: {r:.0f} mm",
         showarrow=True,
         arrowhead=3,
         arrowsize=1.2,
@@ -60,11 +60,16 @@ def _top_view_radius_figure(radius_mm: float) -> go.Figure:
     return fig
 
 
-def _profile_height_figure(height_mm: float) -> go.Figure:
-    h = float(height_mm)
-    h = max(1.0, h)
+def _profile_height_and_radii_figure(height_mm: float, r_bottom_mm: float, r_middle_mm: float, r_top_mm: float) -> go.Figure:
+    h = max(1.0, float(height_mm))
+    rb = max(1.0, float(r_bottom_mm))
+    rm = max(1.0, float(r_middle_mm))
+    rt = max(1.0, float(r_top_mm))
+    rmax = max(rb, rm, rt)
 
     fig = go.Figure()
+
+    # Height reference line
     fig.add_trace(go.Scatter(x=[0, 0], y=[0, h], mode="lines", line=dict(width=4), showlegend=False))
     fig.add_annotation(
         x=0,
@@ -83,11 +88,36 @@ def _profile_height_figure(height_mm: float) -> go.Figure:
         xanchor="left",
         yanchor="bottom",
     )
+
+    def _add_radius(y: float, r: float, label: str):
+        fig.add_trace(go.Scatter(x=[0, r], y=[y, y], mode="lines", line=dict(width=4), showlegend=False))
+        fig.add_annotation(
+            x=r,
+            y=y,
+            ax=0,
+            ay=y,
+            xref="x",
+            yref="y",
+            axref="x",
+            ayref="y",
+            text=f"{label}: {r:.0f} mm",
+            showarrow=True,
+            arrowhead=3,
+            arrowsize=1.2,
+            arrowwidth=2,
+            xanchor="left",
+            yanchor="bottom",
+        )
+
+    _add_radius(0.0, rb, "Bottom radius")
+    _add_radius(0.5 * h, rm, "Middle radius")
+    _add_radius(h, rt, "Top radius")
+
     fig.update_layout(
         margin=dict(l=10, r=10, t=10, b=10),
         height=220,
         showlegend=False,
-        xaxis=dict(visible=False, range=[-10, 40]),
+        xaxis=dict(visible=False, range=[-0.15 * rmax, 1.35 * rmax]),
         yaxis=dict(visible=False, range=[-0.1 * h, 1.1 * h]),
     )
     return fig
@@ -127,15 +157,21 @@ def _build_params_from_ui() -> LampshadeParams:
 
         with st.expander("Geometry", expanded=True):
             height = st.slider("Height", min_value=100, max_value=200, value=150, step=10)
-            nominal_radius = st.number_input("Radius", min_value=10, max_value=50, value=34, step=1)
+
+            inner_frame_hole_diameter = st.number_input("Frame hole", min_value=0, max_value=200, value=30, step=1)
+            min_bottom_radius = max(10, int((inner_frame_hole_diameter / 2) + 2))
+            radius_bottom = st.number_input(
+                "Radius (bottom)", min_value=min_bottom_radius, max_value=80, value=34, step=1
+            )
+            radius_middle = st.number_input("Radius (middle)", min_value=10, max_value=80, value=34, step=1)
+            radius_top = st.number_input("Radius (top)", min_value=10, max_value=80, value=34, step=1)
+
             tip_length = st.slider("Tip len", min_value=10, max_value=30, value=20, step=2)
             star_tips = st.slider("Star tips", min_value=0, max_value=8, value=6, step=1)
             main_bulge = st.slider("Main bulge", min_value=0.0, max_value=25.0, value=22.5, step=2.5)
             secondary_bulges = st.slider("2nd bulge", min_value=0.0, max_value=20.0, value=15.0, step=2.5)
             secondary_bulge_count = st.slider("Sec bulges", min_value=0, max_value=6, value=2, step=1)
             twist_turns = st.slider("Twist", min_value=-2.0, max_value=2.0, value=0.0, step=0.05)
-
-            inner_frame_hole_diameter = st.number_input("Frame hole", min_value=0, max_value=200, value=30, step=1)
             inner_frame_height = st.slider("Frame ht", min_value=0, max_value=10, value=3, step=1)
             inner_frame_wave_amplitude = st.number_input(
                 "Frame amp", min_value=0.0, max_value=200.0, value=17.5, step=0.5
@@ -163,10 +199,13 @@ def _build_params_from_ui() -> LampshadeParams:
     dim_col1, dim_col2 = st.columns(2, gap="large")
     with dim_col1:
         st.caption("Top view")
-        st.plotly_chart(_top_view_radius_figure(nominal_radius), use_container_width=True)
+        st.plotly_chart(_top_view_radius_figure(radius_middle), use_container_width=True)
     with dim_col2:
         st.caption("Profile view")
-        st.plotly_chart(_profile_height_figure(height), use_container_width=True)
+        st.plotly_chart(
+            _profile_height_and_radii_figure(height, radius_bottom, radius_middle, radius_top),
+            use_container_width=True,
+        )
 
     if "last_params" not in st.session_state:
         st.session_state.last_params = None
@@ -184,7 +223,10 @@ def _build_params_from_ui() -> LampshadeParams:
         Material_flow_percent=int(material_flow_percent),
         Print_speed_percent=int(print_speed_percent),
         Height=int(height),
-        Nominal_radius=int(nominal_radius),
+        Nominal_radius=int(radius_middle),
+        Radius_bottom=int(radius_bottom),
+        Radius_middle=int(radius_middle),
+        Radius_top=int(radius_top),
         Tip_length=int(tip_length),
         Star_tips=int(star_tips),
         Main_bulge=float(main_bulge),
