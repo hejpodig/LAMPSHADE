@@ -4,6 +4,7 @@ from dataclasses import asdict
 from pathlib import Path
 
 import streamlit as st
+import plotly.graph_objects as go
 
 # Ensure local FullControl sources are importable when running from repo root.
 # This repo layout is:
@@ -23,6 +24,73 @@ from plotting import plotdata_to_figure
 
 
 st.set_page_config(page_title="FullControl Lampshade", layout="wide")
+
+
+def _top_view_radius_figure(radius_mm: float) -> go.Figure:
+    r = float(radius_mm)
+    r = max(1.0, r)
+
+    fig = go.Figure()
+    fig.add_shape(type="circle", x0=-r, y0=-r, x1=r, y1=r, line=dict(width=2))
+    fig.add_trace(go.Scatter(x=[0, r], y=[0, 0], mode="lines", line=dict(width=4), showlegend=False))
+    fig.add_annotation(
+        x=r,
+        y=0,
+        ax=0,
+        ay=0,
+        xref="x",
+        yref="y",
+        axref="x",
+        ayref="y",
+        text=f"Radius: {r:.0f} mm",
+        showarrow=True,
+        arrowhead=3,
+        arrowsize=1.2,
+        arrowwidth=2,
+        xanchor="left",
+        yanchor="bottom",
+    )
+    fig.update_layout(
+        margin=dict(l=10, r=10, t=10, b=10),
+        height=220,
+        showlegend=False,
+        xaxis=dict(visible=False, range=[-1.2 * r, 1.2 * r], scaleanchor="y", scaleratio=1),
+        yaxis=dict(visible=False, range=[-1.2 * r, 1.2 * r]),
+    )
+    return fig
+
+
+def _profile_height_figure(height_mm: float) -> go.Figure:
+    h = float(height_mm)
+    h = max(1.0, h)
+
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=[0, 0], y=[0, h], mode="lines", line=dict(width=4), showlegend=False))
+    fig.add_annotation(
+        x=0,
+        y=h,
+        ax=0,
+        ay=0,
+        xref="x",
+        yref="y",
+        axref="x",
+        ayref="y",
+        text=f"Height: {h:.0f} mm",
+        showarrow=True,
+        arrowhead=3,
+        arrowsize=1.2,
+        arrowwidth=2,
+        xanchor="left",
+        yanchor="bottom",
+    )
+    fig.update_layout(
+        margin=dict(l=10, r=10, t=10, b=10),
+        height=220,
+        showlegend=False,
+        xaxis=dict(visible=False, range=[-10, 40]),
+        yaxis=dict(visible=False, range=[-0.1 * h, 1.1 * h]),
+    )
+    return fig
 
 
 def _viewer_presets(viewer_mode: str) -> tuple[int, int]:
@@ -59,7 +127,7 @@ def _build_params_from_ui() -> LampshadeParams:
 
         with st.expander("Geometry", expanded=True):
             height = st.slider("Height", min_value=100, max_value=200, value=150, step=10)
-            nominal_radius = st.slider("Radius", min_value=20, max_value=50, value=34, step=1)
+            nominal_radius = st.number_input("Radius", min_value=20, max_value=50, value=34, step=1)
             tip_length = st.slider("Tip len", min_value=10, max_value=30, value=20, step=2)
             star_tips = st.slider("Star tips", min_value=0, max_value=8, value=6, step=1)
             main_bulge = st.slider("Main bulge", min_value=0.0, max_value=25.0, value=22.5, step=2.5)
@@ -92,6 +160,14 @@ def _build_params_from_ui() -> LampshadeParams:
             initial_z_factor = st.number_input("Initial z factor", min_value=0.0, max_value=1.0, value=0.7, step=0.05)
 
     st.markdown("### Preview")
+    dim_col1, dim_col2 = st.columns(2, gap="large")
+    with dim_col1:
+        st.caption("Top view")
+        st.plotly_chart(_top_view_radius_figure(nominal_radius), use_container_width=True)
+    with dim_col2:
+        st.caption("Profile view")
+        st.plotly_chart(_profile_height_figure(height), use_container_width=True)
+
     if "last_params" not in st.session_state:
         st.session_state.last_params = None
     if "last_result" not in st.session_state:
@@ -177,6 +253,9 @@ def _build_params_from_ui() -> LampshadeParams:
 
 
 st.title("FullControl Lampshade")
-st.caption("Interactive lampshade generator + preview + GCode export")
+st.caption(
+    "This app was edited from the already functional fullcontrol.xyz lampshade editor. "
+    "If you dont know how to edit GCode or basic troubleshooting this tool is not made for you."
+)
 
 _ = _build_params_from_ui()
