@@ -127,7 +127,7 @@ def _build_params_from_ui() -> LampshadeParams:
 
         with st.expander("Geometry", expanded=True):
             height = st.slider("Height", min_value=100, max_value=200, value=150, step=10)
-            nominal_radius = st.number_input("Radius", min_value=20, max_value=50, value=34, step=1)
+            nominal_radius = st.number_input("Radius", min_value=10, max_value=50, value=34, step=1)
             tip_length = st.slider("Tip len", min_value=10, max_value=30, value=20, step=2)
             star_tips = st.slider("Star tips", min_value=0, max_value=8, value=6, step=1)
             main_bulge = st.slider("Main bulge", min_value=0.0, max_value=25.0, value=22.5, step=2.5)
