@@ -16,8 +16,10 @@ if str(_FULLCONTROL_SRC_ROOT) not in sys.path:
 
 import fullcontrol as fc
 
-from streamlit_app.lampshade_model import LampshadeParams, build_lampshade_steps
-from streamlit_app.plotting import plotdata_to_figure
+# Streamlit executes this file with `streamlit_app/` as the script directory.
+# Import sibling modules directly so it works both locally and on Streamlit Cloud.
+from lampshade_model import LampshadeParams, build_lampshade_steps
+from plotting import plotdata_to_figure
 
 
 st.set_page_config(page_title="FullControl Lampshade", layout="wide")
