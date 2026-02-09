@@ -14,10 +14,13 @@ def plotdata_to_figure(data: PlotData, controls: PlotControls) -> go.Figure:
 
     fig = go.Figure()
 
+    line_width = float(controls.line_width) if controls.line_width is not None else 2.0
+    zoom = float(controls.zoom) if (controls.zoom is not None and controls.zoom != 0) else 1.0
+
     max_width = 0.0
     for path in data.paths:
         colors_now = [f"rgb({c[0]*255:.2f}, {c[1]*255:.2f}, {c[2]*255:.2f})" for c in path.colors]
-        linewidth_now = controls.line_width * (2 if path.extruder.on else 0.5)
+        linewidth_now = line_width * (2 if path.extruder.on else 0.5)
         max_width = max(max_width, linewidth_now)
 
         if (not controls.hide_travel) or path.extruder.on:
@@ -64,7 +67,7 @@ def plotdata_to_figure(data: PlotData, controls: PlotControls) -> go.Figure:
     relative_centre_z = 0.5 * data.bounding_box.rangez / bounding_box_size
     camera_centre_z = -0.5 + relative_centre_z
     camera = dict(
-        eye=dict(x=-0.5 / controls.zoom, y=-1 / controls.zoom, z=-0.5 + 0.5 / controls.zoom),
+        eye=dict(x=-0.5 / zoom, y=-1 / zoom, z=-0.5 + 0.5 / zoom),
         center=dict(x=0, y=0, z=camera_centre_z),
     )
 
