@@ -307,7 +307,14 @@ def _build_params_from_ui() -> LampshadeParams:
                 key="Radius_middle_z",
             )
 
-            tip_length = st.slider("Tip len", min_value=10, max_value=30, step=2, key="Tip_length")
+            tip_length = st.slider(
+                "Star tip length",
+                min_value=10,
+                max_value=30,
+                step=2,
+                help="How long each star point extends outwards (mm).",
+                key="Tip_length",
+            )
             star_tips = st.slider("Star tips", min_value=0, max_value=8, step=1, key="Star_tips")
             main_bulge = st.slider("Main bulge", min_value=0.0, max_value=25.0, step=2.5, key="Main_bulge")
             secondary_bulges = st.slider("2nd bulge", min_value=0.0, max_value=20.0, step=2.5, key="Secondary_bulges")
