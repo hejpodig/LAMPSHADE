@@ -77,10 +77,13 @@ def build_lampshade_steps(params: LampshadeParams):
 
     def _base_radius(z_fraction: float) -> float:
         zf = max(0.0, min(1.0, float(z_fraction)))
+        def _smoothstep(t: float) -> float:
+            tt = max(0.0, min(1.0, float(t)))
+            return tt * tt * (3.0 - 2.0 * tt)
         if zf <= 0.5:
-            t = zf / 0.5
+            t = _smoothstep(zf / 0.5)
             return r_bottom + (r_middle - r_bottom) * t
-        t = (zf - 0.5) / 0.5
+        t = _smoothstep((zf - 0.5) / 0.5)
         return r_middle + (r_top - r_middle) * t
     bulge1, bulge2 = params.Main_bulge, params.Secondary_bulges
     bulge2_count = max(0, int(params.Secondary_bulge_count))
