@@ -247,7 +247,12 @@ def _build_params_from_ui() -> LampshadeParams:
 
     with st.sidebar:
         with st.expander("Presets", expanded=False):
-            preset_name = st.text_input("Preset name", value=str(st.session_state.get("Design_name", "fc_lampshade")), key="_preset_name")
+            preset_name = st.text_input(
+                "Preset file name",
+                value=str(st.session_state.get("Design_name", "fc_lampshade")),
+                help="Used only for the downloaded preset filename.",
+                key="_preset_name",
+            )
             preset_json = json.dumps(_preset_payload(), indent=2, sort_keys=True)
             st.download_button(
                 "Download preset (.json)",
@@ -269,41 +274,97 @@ def _build_params_from_ui() -> LampshadeParams:
         generate = st.button("Generate / Update", type="primary", use_container_width=True)
 
         with st.expander("Controls", expanded=True):
-            output = st.selectbox("Output", ["Simple Plot", "Detailed Plot", "GCode"], key="Output")
-            viewer_mode = st.selectbox("Viewer", ["Fast viewer", "Normal viewer", "High detail"], key="Viewer")
-            annotations = st.checkbox("Annotations", key="Annotations")
+            output = st.selectbox(
+                "Output mode",
+                ["Simple Plot", "Detailed Plot", "GCode"],
+                help="Choose whether to preview the design or download GCode.",
+                key="Output",
+            )
+            viewer_mode = st.selectbox(
+                "Viewer detail",
+                ["Fast viewer", "Normal viewer", "High detail"],
+                help="Fast viewer down-samples the preview for speed (does not change the exported GCode).",
+                key="Viewer",
+            )
+            annotations = st.checkbox("Show annotations", help="Show/hide notes in the preview.", key="Annotations")
             viewer_point_stride, viewer_layer_stride = _viewer_presets(viewer_mode)
 
         st.divider()
         with st.expander("Printer", expanded=True):
             printer_name = st.selectbox(
-                "Printer",
+                "Printer profile",
                 ["generic", "ultimaker2plus", "prusa_i3", "ender_3", "cr_10", "bambulab_x1", "toolchanger_T"],
+                help="Affects startup/end GCode and conventions.",
                 key="Printer_name",
             )
-            nozzle_temp = st.number_input("Nozzle °C", min_value=0, max_value=400, step=1, key="Nozzle_temp")
-            bed_temp = st.number_input("Bed °C", min_value=0, max_value=150, step=1, key="Bed_temp")
-            fan_percent = st.number_input("Fan %", min_value=0, max_value=100, step=1, key="Fan_percent")
-            material_flow_percent = st.number_input("Flow %", min_value=0, max_value=200, step=1, key="Material_flow_percent")
-            print_speed_percent = st.number_input("Speed %", min_value=10, max_value=400, step=5, key="Print_speed_percent")
-            design_name = st.text_input("Name", key="Design_name")
+            nozzle_temp = st.number_input(
+                "Nozzle temperature (°C)", min_value=0, max_value=400, step=1, key="Nozzle_temp"
+            )
+            bed_temp = st.number_input("Bed temperature (°C)", min_value=0, max_value=150, step=1, key="Bed_temp")
+            fan_percent = st.number_input("Part cooling fan (%)", min_value=0, max_value=100, step=1, key="Fan_percent")
+            material_flow_percent = st.number_input(
+                "Flow multiplier (%)", min_value=0, max_value=200, step=1, key="Material_flow_percent"
+            )
+            print_speed_percent = st.number_input(
+                "Speed multiplier (%)", min_value=10, max_value=400, step=5, key="Print_speed_percent"
+            )
+            design_name = st.text_input(
+                "Output name",
+                help="Used as the downloaded GCode filename prefix.",
+                key="Design_name",
+            )
 
         with st.expander("Geometry", expanded=True):
-            height = st.slider("Height", min_value=100, max_value=200, step=10, key="Height")
+            height = st.slider(
+                "Height (mm)",
+                min_value=100,
+                max_value=200,
+                step=10,
+                help="Overall height of the lampshade.",
+                key="Height",
+            )
 
-            inner_frame_hole_diameter = st.number_input("Frame hole", min_value=0, max_value=200, step=1, key="Inner_frame_hole_diameter")
+            inner_frame_hole_diameter = st.number_input(
+                "Inner frame hole diameter (mm)",
+                min_value=0,
+                max_value=200,
+                step=1,
+                help="Diameter of the inner hole in the printed frame/ring.",
+                key="Inner_frame_hole_diameter",
+            )
             min_bottom_radius = max(10, int((float(inner_frame_hole_diameter) / 2.0) + 2.0))
             if float(st.session_state.get("Radius_bottom", 0)) < float(min_bottom_radius):
                 st.session_state["Radius_bottom"] = int(min_bottom_radius)
-            radius_bottom = st.number_input("Radius (bottom)", min_value=int(min_bottom_radius), max_value=80, step=1, key="Radius_bottom")
-            radius_middle = st.number_input("Radius (middle)", min_value=10, max_value=80, step=1, key="Radius_middle")
-            radius_top = st.number_input("Radius (top)", min_value=10, max_value=80, step=1, key="Radius_top")
+            radius_bottom = st.number_input(
+                "Bottom radius (mm)",
+                min_value=int(min_bottom_radius),
+                max_value=80,
+                step=1,
+                help="Base radius at the bottom. Minimum is automatically constrained to fit the inner frame.",
+                key="Radius_bottom",
+            )
+            radius_middle = st.number_input(
+                "Middle radius (mm)",
+                min_value=10,
+                max_value=80,
+                step=1,
+                help="Base radius at the adjustable middle height.",
+                key="Radius_middle",
+            )
+            radius_top = st.number_input(
+                "Top radius (mm)",
+                min_value=10,
+                max_value=80,
+                step=1,
+                help="Base radius at the top.",
+                key="Radius_top",
+            )
             radius_middle_z = st.slider(
-                "Middle Z position (%)",
+                "Middle radius position (% of height)",
                 min_value=5,
                 max_value=95,
                 step=1,
-                help="Where along the height the middle radius occurs. 0% = bottom, 100% = top.",
+                help="Where along the height the middle radius occurs.",
                 key="Radius_middle_z",
             )
 
@@ -315,31 +376,160 @@ def _build_params_from_ui() -> LampshadeParams:
                 help="How long each star point extends outwards (mm).",
                 key="Tip_length",
             )
-            star_tips = st.slider("Star tips", min_value=0, max_value=8, step=1, key="Star_tips")
-            main_bulge = st.slider("Main bulge", min_value=0.0, max_value=25.0, step=2.5, key="Main_bulge")
-            secondary_bulges = st.slider("2nd bulge", min_value=0.0, max_value=20.0, step=2.5, key="Secondary_bulges")
-            secondary_bulge_count = st.slider("Sec bulges", min_value=0, max_value=6, step=1, key="Secondary_bulge_count")
-            twist_turns = st.slider("Twist", min_value=-2.0, max_value=2.0, step=0.05, key="Twist_turns")
-            inner_frame_height = st.slider("Frame ht", min_value=0, max_value=10, step=1, key="Inner_frame_height")
-            inner_frame_wave_amplitude = st.number_input(
-                "Frame amp", min_value=0.0, max_value=200.0, step=0.5, key="Inner_frame_wave_amplitude"
+            star_tips = st.slider(
+                "Number of star tips",
+                min_value=0,
+                max_value=8,
+                step=1,
+                help="0 disables the star pattern (round shade).",
+                key="Star_tips",
             )
-            centre_xy = st.number_input("Centre XY", min_value=0, max_value=500, step=1, key="Centre_XY")
+            main_bulge = st.slider(
+                "Main bulge amplitude (mm)",
+                min_value=0.0,
+                max_value=25.0,
+                step=2.5,
+                help="Controls the overall bulbous shape.",
+                key="Main_bulge",
+            )
+            secondary_bulges = st.slider(
+                "Secondary bulge amplitude (mm)",
+                min_value=0.0,
+                max_value=20.0,
+                step=2.5,
+                help="Controls the smaller bulges along the height.",
+                key="Secondary_bulges",
+            )
+            secondary_bulge_count = st.slider(
+                "Secondary bulge count",
+                min_value=0,
+                max_value=6,
+                step=1,
+                help="0 disables secondary bulges.",
+                key="Secondary_bulge_count",
+            )
+            twist_turns = st.slider(
+                "Twist (turns bottom→top)",
+                min_value=-2.0,
+                max_value=2.0,
+                step=0.05,
+                help="Applies twist to the shell. The inner frame stays untwisted.",
+                key="Twist_turns",
+            )
+            inner_frame_height = st.slider(
+                "Inner frame height (mm)",
+                min_value=0,
+                max_value=10,
+                step=1,
+                help="0 disables the inner frame.",
+                key="Inner_frame_height",
+            )
+            inner_frame_wave_amplitude = st.number_input(
+                "Inner frame wave amplitude (mm)",
+                min_value=0.0,
+                max_value=200.0,
+                step=0.5,
+                help="Amplitude of the wavy inner frame lines.",
+                key="Inner_frame_wave_amplitude",
+            )
+            centre_xy = st.number_input(
+                "Centre position XY (mm)",
+                min_value=0,
+                max_value=500,
+                step=1,
+                help="Where the shade is centered on the build plate.",
+                key="Centre_XY",
+            )
 
         with st.expander("Zigzags", expanded=True):
-            zigzag_min = st.slider("Zigzag min", min_value=0.0, max_value=6.0, step=0.25, key="zag_min")
-            zigzag_max = st.slider("Zigzag max", min_value=0.0, max_value=10.0, step=0.25, key="zag_max")
-            zigzag_freq_factor = st.slider("Zigzag freq", min_value=0.25, max_value=3.0, step=0.05, key="zigzag_freq_factor")
-            zigzag_radius_factor = st.slider("Zigzag radius", min_value=0.0, max_value=3.0, step=0.05, key="zigzag_radius_factor")
-            zigzag_rounding_radius = st.slider("Zigzag round", min_value=0, max_value=10, step=1, key="zigzag_rounding_radius")
+            zigzag_min = st.slider(
+                "Zigzag depth (min)",
+                min_value=0.0,
+                max_value=6.0,
+                step=0.25,
+                help="Minimum zigzag depth around the circumference.",
+                key="zag_min",
+            )
+            zigzag_max = st.slider(
+                "Zigzag depth (max)",
+                min_value=0.0,
+                max_value=10.0,
+                step=0.25,
+                help="Maximum zigzag depth (usually at star tips).",
+                key="zag_max",
+            )
+            zigzag_freq_factor = st.slider(
+                "Zigzag frequency multiplier",
+                min_value=0.25,
+                max_value=3.0,
+                step=0.05,
+                help="Higher = more zigzags around the perimeter.",
+                key="zigzag_freq_factor",
+            )
+            zigzag_radius_factor = st.slider(
+                "Zigzag amplitude multiplier",
+                min_value=0.0,
+                max_value=3.0,
+                step=0.05,
+                help="Scales how strongly zigzags affect radius.",
+                key="zigzag_radius_factor",
+            )
+            zigzag_rounding_radius = st.slider(
+                "Zigzag rounding (0–10)",
+                min_value=0,
+                max_value=10,
+                step=1,
+                help="0 = sharp/triangular; 10 = smooth/rounded.",
+                key="zigzag_rounding_radius",
+            )
 
         with st.expander("Advanced", expanded=False):
-            eh = st.number_input("Layer height (EH)", min_value=0.05, max_value=2.0, step=0.05, key="EH")
-            ew = st.number_input("Line width (EW)", min_value=0.1, max_value=2.0, step=0.05, key="EW")
-            initial_print_speed = st.number_input("Initial speed", min_value=10, max_value=5000, step=10, key="initial_print_speed")
-            main_print_speed = st.number_input("Main speed", min_value=10, max_value=10000, step=10, key="main_print_speed")
-            speedchange_layers = st.number_input("Speedchange layers", min_value=0, max_value=50, step=1, key="speedchange_layers")
-            initial_z_factor = st.number_input("Initial z factor", min_value=0.0, max_value=1.0, step=0.05, key="initial_z_factor")
+            eh = st.number_input(
+                "Layer height EH (mm)",
+                min_value=0.05,
+                max_value=2.0,
+                step=0.05,
+                help="Base layer height used by the design (will be scaled for the plot modes).",
+                key="EH",
+            )
+            ew = st.number_input(
+                "Line width EW (mm)",
+                min_value=0.1,
+                max_value=2.0,
+                step=0.05,
+                help="Designed extrusion width.",
+                key="EW",
+            )
+            initial_print_speed = st.number_input(
+                "Initial print speed (mm/min)",
+                min_value=10,
+                max_value=5000,
+                step=10,
+                key="initial_print_speed",
+            )
+            main_print_speed = st.number_input(
+                "Main print speed (mm/min)",
+                min_value=10,
+                max_value=10000,
+                step=10,
+                key="main_print_speed",
+            )
+            speedchange_layers = st.number_input(
+                "Speed ramp layers",
+                min_value=0,
+                max_value=50,
+                step=1,
+                help="Number of layers used to ramp from initial to main speed.",
+                key="speedchange_layers",
+            )
+            initial_z_factor = st.number_input(
+                "First-layer Z factor",
+                min_value=0.0,
+                max_value=1.0,
+                step=0.05,
+                help="Scales the first layer Z (lower = more squish).",
+                key="initial_z_factor",
+            )
 
     st.markdown("### Preview")
 
