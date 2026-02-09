@@ -314,7 +314,9 @@ def _build_params_from_ui() -> LampshadeParams:
             secondary_bulge_count = st.slider("Sec bulges", min_value=0, max_value=6, step=1, key="Secondary_bulge_count")
             twist_turns = st.slider("Twist", min_value=-2.0, max_value=2.0, step=0.05, key="Twist_turns")
             inner_frame_height = st.slider("Frame ht", min_value=0, max_value=10, step=1, key="Inner_frame_height")
-            inner_frame_wave_amplitude = st.number_input("Frame amp", min_value=0.0, max_value=200, step=0.5, key="Inner_frame_wave_amplitude")
+            inner_frame_wave_amplitude = st.number_input(
+                "Frame amp", min_value=0.0, max_value=200.0, step=0.5, key="Inner_frame_wave_amplitude"
+            )
             centre_xy = st.number_input("Centre XY", min_value=0, max_value=500, step=1, key="Centre_XY")
 
         with st.expander("Zigzags", expanded=True):
