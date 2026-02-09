@@ -335,16 +335,6 @@ def _build_params_from_ui() -> LampshadeParams:
             initial_z_factor = st.number_input("Initial z factor", min_value=0.0, max_value=1.0, step=0.05, key="initial_z_factor")
 
     st.markdown("### Preview")
-    dim_col1, dim_col2 = st.columns(2, gap="large")
-    with dim_col1:
-        st.caption("Top view")
-        st.plotly_chart(_top_view_radius_figure(radius_middle), use_container_width=True)
-    with dim_col2:
-        st.caption("Profile view")
-        st.plotly_chart(
-            _profile_height_and_radii_figure(height, radius_bottom, radius_middle, radius_top, radius_middle_z / 100.0),
-            use_container_width=True,
-        )
 
     if "last_params" not in st.session_state:
         st.session_state.last_params = None
@@ -422,6 +412,23 @@ def _build_params_from_ui() -> LampshadeParams:
         st.error(result["error"])
     elif result["type"] == "plot":
         st.plotly_chart(result["fig"], use_container_width=True)
+        st.divider()
+        dim_col1, dim_col2 = st.columns(2, gap="large")
+        with dim_col1:
+            st.caption("Top view")
+            st.plotly_chart(_top_view_radius_figure(radius_middle), use_container_width=True)
+        with dim_col2:
+            st.caption("Profile view")
+            st.plotly_chart(
+                _profile_height_and_radii_figure(
+                    height,
+                    radius_bottom,
+                    radius_middle,
+                    radius_top,
+                    radius_middle_z / 100.0,
+                ),
+                use_container_width=True,
+            )
     elif result["type"] == "gcode":
         st.download_button(
             "Download GCode",
