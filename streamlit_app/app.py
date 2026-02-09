@@ -43,46 +43,43 @@ def _build_params_from_ui() -> LampshadeParams:
         viewer_point_stride, viewer_layer_stride = _viewer_presets(viewer_mode)
 
         st.divider()
-        st.markdown("### Printer")
-        printer_name = st.selectbox(
-            "Printer",
-            ["generic", "ultimaker2plus", "prusa_i3", "ender_3", "cr_10", "bambulab_x1", "toolchanger_T"],
-            index=0,
-        )
-        nozzle_temp = st.number_input("Nozzle °C", min_value=0, max_value=400, value=220, step=1)
-        bed_temp = st.number_input("Bed °C", min_value=0, max_value=150, value=40, step=1)
-        fan_percent = st.number_input("Fan %", min_value=0, max_value=100, value=100, step=1)
-        material_flow_percent = st.number_input("Flow %", min_value=0, max_value=200, value=100, step=1)
-        print_speed_percent = st.number_input("Speed %", min_value=10, max_value=400, value=200, step=5)
-        design_name = st.text_input("Name", value="fc_lampshade")
+        with st.expander("Printer", expanded=True):
+            printer_name = st.selectbox(
+                "Printer",
+                ["generic", "ultimaker2plus", "prusa_i3", "ender_3", "cr_10", "bambulab_x1", "toolchanger_T"],
+                index=0,
+            )
+            nozzle_temp = st.number_input("Nozzle °C", min_value=0, max_value=400, value=220, step=1)
+            bed_temp = st.number_input("Bed °C", min_value=0, max_value=150, value=40, step=1)
+            fan_percent = st.number_input("Fan %", min_value=0, max_value=100, value=100, step=1)
+            material_flow_percent = st.number_input("Flow %", min_value=0, max_value=200, value=100, step=1)
+            print_speed_percent = st.number_input("Speed %", min_value=10, max_value=400, value=200, step=5)
+            design_name = st.text_input("Name", value="fc_lampshade")
 
-        st.divider()
-        st.markdown("### Geometry")
-        height = st.slider("Height", min_value=100, max_value=200, value=150, step=10)
-        nominal_radius = st.slider("Radius", min_value=20, max_value=50, value=34, step=1)
-        tip_length = st.slider("Tip len", min_value=10, max_value=30, value=20, step=2)
-        star_tips = st.slider("Star tips", min_value=0, max_value=8, value=6, step=1)
-        main_bulge = st.slider("Main bulge", min_value=0.0, max_value=25.0, value=22.5, step=2.5)
-        secondary_bulges = st.slider("2nd bulge", min_value=0.0, max_value=20.0, value=15.0, step=2.5)
-        secondary_bulge_count = st.slider("Sec bulges", min_value=0, max_value=6, value=2, step=1)
-        twist_turns = st.slider("Twist", min_value=-2.0, max_value=2.0, value=0.0, step=0.05)
+        with st.expander("Geometry", expanded=True):
+            height = st.slider("Height", min_value=100, max_value=200, value=150, step=10)
+            nominal_radius = st.slider("Radius", min_value=20, max_value=50, value=34, step=1)
+            tip_length = st.slider("Tip len", min_value=10, max_value=30, value=20, step=2)
+            star_tips = st.slider("Star tips", min_value=0, max_value=8, value=6, step=1)
+            main_bulge = st.slider("Main bulge", min_value=0.0, max_value=25.0, value=22.5, step=2.5)
+            secondary_bulges = st.slider("2nd bulge", min_value=0.0, max_value=20.0, value=15.0, step=2.5)
+            secondary_bulge_count = st.slider("Sec bulges", min_value=0, max_value=6, value=2, step=1)
+            twist_turns = st.slider("Twist", min_value=-2.0, max_value=2.0, value=0.0, step=0.05)
 
-        inner_frame_hole_diameter = st.number_input("Frame hole", min_value=0, max_value=200, value=30, step=1)
-        inner_frame_height = st.slider("Frame ht", min_value=0, max_value=10, value=3, step=1)
-        inner_frame_wave_amplitude = st.number_input(
-            "Frame amp", min_value=0.0, max_value=200.0, value=17.5, step=0.5
-        )
-        centre_xy = st.number_input("Centre XY", min_value=0, max_value=500, value=104, step=1)
+            inner_frame_hole_diameter = st.number_input("Frame hole", min_value=0, max_value=200, value=30, step=1)
+            inner_frame_height = st.slider("Frame ht", min_value=0, max_value=10, value=3, step=1)
+            inner_frame_wave_amplitude = st.number_input(
+                "Frame amp", min_value=0.0, max_value=200.0, value=17.5, step=0.5
+            )
+            centre_xy = st.number_input("Centre XY", min_value=0, max_value=500, value=104, step=1)
 
-        st.divider()
-        st.markdown("### Zigzags")
-        zigzag_min = st.slider("Zigzag min", min_value=0.0, max_value=6.0, value=1.0, step=0.25)
-        zigzag_max = st.slider("Zigzag max", min_value=0.0, max_value=10.0, value=5.0, step=0.25)
-        zigzag_freq_factor = st.slider("Zigzag freq", min_value=0.25, max_value=3.0, value=1.0, step=0.05)
-        zigzag_radius_factor = st.slider("Zigzag radius", min_value=0.0, max_value=3.0, value=1.0, step=0.05)
-        zigzag_rounding_radius = st.slider("Zigzag round", min_value=0, max_value=10, value=0, step=1)
+        with st.expander("Zigzags", expanded=True):
+            zigzag_min = st.slider("Zigzag min", min_value=0.0, max_value=6.0, value=1.0, step=0.25)
+            zigzag_max = st.slider("Zigzag max", min_value=0.0, max_value=10.0, value=5.0, step=0.25)
+            zigzag_freq_factor = st.slider("Zigzag freq", min_value=0.25, max_value=3.0, value=1.0, step=0.05)
+            zigzag_radius_factor = st.slider("Zigzag radius", min_value=0.0, max_value=3.0, value=1.0, step=0.05)
+            zigzag_rounding_radius = st.slider("Zigzag round", min_value=0, max_value=10, value=0, step=1)
 
-        st.divider()
         with st.expander("Advanced", expanded=False):
             eh = st.number_input("Layer height (EH)", min_value=0.05, max_value=2.0, value=0.2, step=0.05)
             ew = st.number_input("Line width (EW)", min_value=0.1, max_value=2.0, value=0.5, step=0.05)
