@@ -773,6 +773,17 @@ def _build_params_from_ui() -> LampshadeParams | RippleTextureParams:
                 key="Viewer",
             )
             annotations = st.checkbox("Show annotations", help="Show/hide notes in the preview.", key="Annotations")
+            color_scheme_label = st.selectbox(
+                "Line colors",
+                [
+                    "Z gradient (default)",
+                    "Print sequence",
+                    "Print sequence (fluctuating)",
+                    "Random blue",
+                ],
+                help="Changes the preview line coloring only (does not change exported GCode).",
+                key="_preview_color_scheme",
+            )
             viewer_point_stride, viewer_layer_stride = _viewer_presets(viewer_mode)
 
         with st.expander("Printer", expanded=False):
@@ -955,6 +966,14 @@ def _build_params_from_ui() -> LampshadeParams | RippleTextureParams:
 
                 if params.Output in ["Simple Plot", "Detailed Plot"]:
                     plot_controls.raw_data = True
+                    # Apply preview color scheme.
+                    _color_type_map = {
+                        "Z gradient (default)": "z_gradient",
+                        "Print sequence": "print_sequence",
+                        "Print sequence (fluctuating)": "print_sequence_fluctuating",
+                        "Random blue": "random_blue",
+                    }
+                    plot_controls.color_type = _color_type_map.get(color_scheme_label, "z_gradient")
                     plot_data = fc.transform(steps, "plot", plot_controls)
                     fig = plotdata_to_figure(plot_data, plot_controls)
                     st.session_state.last_result = {"type": "plot", "fig": fig}
