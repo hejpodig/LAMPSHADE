@@ -325,7 +325,7 @@ def _build_params_from_ui() -> LampshadeParams | RippleTextureParams:
 
         # Blob printing defaults (prefixed so switching designs doesn't overwrite other values)
         "BP_radius": 75.0,
-        "BP_layers": 10,
+        "BP_layers": 125,
         "BP_dense_layers": 2,
         "BP_blob_width": 1.6,
         "BP_blob_overlap": 33.0,
@@ -723,7 +723,7 @@ def _build_params_from_ui() -> LampshadeParams | RippleTextureParams:
                     min_value=4,
                     max_value=250,
                     step=1,
-                    value=int(st.session_state.get("BP_layers", 10)),
+                    value=int(st.session_state.get("BP_layers", 125)),
                     key="BP_layers",
                 )
                 bp_dense_layers = st.slider(
@@ -925,7 +925,7 @@ def _build_params_from_ui() -> LampshadeParams | RippleTextureParams:
             Print_speed_percent=int(print_speed_percent),
             Design_name=design_name,
             tube_radius=float(st.session_state.get("BP_radius", 10.0)),
-            layers=int(st.session_state.get("BP_layers", 10)),
+            layers=int(st.session_state.get("BP_layers", 125)),
             dense_layers=int(st.session_state.get("BP_dense_layers", 2)),
             blob_size=float(st.session_state.get("BP_blob_width", 1.6)),
             blob_overlap_percent=float(st.session_state.get("BP_blob_overlap", 33.0)),

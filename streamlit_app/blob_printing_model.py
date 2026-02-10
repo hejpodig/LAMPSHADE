@@ -24,7 +24,7 @@ class BlobPrintingParams:
 
     # Design (matches fullcontrol/models/blob_printing.ipynb)
     tube_radius: float = 75.0
-    layers: int = 10
+    layers: int = 125
     dense_layers: int = 2
 
     blob_size: float = 1.6
