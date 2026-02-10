@@ -340,7 +340,7 @@ def _build_params_from_ui() -> LampshadeParams | RippleTextureParams:
             st.session_state["_design_last"] = design
 
         if design == "Lampshade":
-            with st.expander("Body", expanded=True):
+            with st.expander("Body", expanded=False):
                 height = st.slider(
                     "Height (mm)",
                     min_value=100,
@@ -405,7 +405,7 @@ def _build_params_from_ui() -> LampshadeParams | RippleTextureParams:
                     key="Inner_frame_height",
                 )
 
-            with st.expander("Shape", expanded=True):
+            with st.expander("Shape", expanded=False):
                 st.markdown("**Star tips**")
                 star_tips = st.slider(
                     "Number of star tips",
@@ -458,7 +458,7 @@ def _build_params_from_ui() -> LampshadeParams | RippleTextureParams:
                     key="Secondary_bulges",
                 )
 
-            with st.expander("Zigzags", expanded=True):
+            with st.expander("Zigzags", expanded=False):
                 zigzag_min = st.slider(
                     "Zigzag depth (min)",
                     min_value=0.0,
@@ -565,7 +565,7 @@ def _build_params_from_ui() -> LampshadeParams | RippleTextureParams:
                     key="Centre_XY",
                 )
         elif design == "Ripple texture":
-            with st.expander("Body", expanded=True):
+            with st.expander("Body", expanded=False):
                 rt_inner_rad = st.number_input(
                     "Inner radius (mm)",
                     min_value=10.0,
@@ -583,7 +583,7 @@ def _build_params_from_ui() -> LampshadeParams | RippleTextureParams:
                     key="RT_height",
                 )
 
-            with st.expander("Shape", expanded=True):
+            with st.expander("Shape", expanded=False):
                 rt_skew_percent = st.slider(
                     "Twist (%)",
                     min_value=-100.0,
@@ -651,7 +651,7 @@ def _build_params_from_ui() -> LampshadeParams | RippleTextureParams:
                     key="RT_shape_factor",
                 )
         else:
-            with st.expander("Blob printing", expanded=True):
+            with st.expander("Blob printing", expanded=False):
                 bp_radius = st.slider(
                     "Radius (mm)",
                     min_value=5.0,
@@ -701,7 +701,7 @@ def _build_params_from_ui() -> LampshadeParams | RippleTextureParams:
                     key="BP_extrusion_speed",
                 )
 
-        with st.expander("Controls", expanded=True):
+        with st.expander("Controls", expanded=False):
             output = st.selectbox(
                 "Output mode",
                 ["Simple Plot", "Detailed Plot", "GCode"],
@@ -717,7 +717,7 @@ def _build_params_from_ui() -> LampshadeParams | RippleTextureParams:
             annotations = st.checkbox("Show annotations", help="Show/hide notes in the preview.", key="Annotations")
             viewer_point_stride, viewer_layer_stride = _viewer_presets(viewer_mode)
 
-        with st.expander("Printer", expanded=True):
+        with st.expander("Printer", expanded=False):
             printer_name = st.selectbox(
                 "Printer profile",
                 ["generic", "ultimaker2plus", "prusa_i3", "ender_3", "cr_10", "bambulab_x1", "toolchanger_T"],
