@@ -678,22 +678,27 @@ def _build_params_from_ui() -> LampshadeParams:
     elif result["type"] == "plot":
         st.plotly_chart(result["fig"], use_container_width=True)
         st.divider()
-        dim_col1, dim_col2 = st.columns(2, gap="large")
-        with dim_col1:
-            st.caption("Top view")
-            st.plotly_chart(_top_view_radius_figure(radius_middle), use_container_width=True)
-        with dim_col2:
-            st.caption("Profile view")
-            st.plotly_chart(
-                _profile_height_and_radii_figure(
-                    height,
-                    radius_bottom,
-                    radius_middle,
-                    radius_top,
-                    radius_middle_z / 100.0,
-                ),
-                use_container_width=True,
-            )
+
+        images_dir = Path(__file__).parent
+        image_names = [
+            "Frameheight.png",
+            "Framehole.png",
+            "profile radius.png",
+            "startiplength.png",
+            "startips.png",
+            "topradius.png",
+            "Zigzag.png",
+        ]
+        for image_name in image_names:
+            image_path = images_dir / image_name
+            if image_path.exists():
+                st.image(str(image_path), use_container_width=True)
+                st.text_area(
+                    "Explanation",
+                    key=f"_img_note::{image_name}",
+                    height=90,
+                    placeholder="Add explanation for this image...",
+                )
     elif result["type"] == "gcode":
         st.download_button(
             "Download GCode",
