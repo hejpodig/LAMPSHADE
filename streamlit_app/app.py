@@ -8,6 +8,7 @@ from pathlib import Path
 
 import streamlit as st
 import plotly.graph_objects as go
+from streamlit_clickable_images import clickable_images
 
 # Ensure local FullControl sources are importable when running from repo root.
 # This repo layout is:
@@ -692,16 +693,29 @@ def _build_params_from_ui() -> LampshadeParams:
         ]
         images = [(name, images_dir / name) for name in image_names if (images_dir / name).exists()]
         if images:
-            img_cols = st.columns(len(images), gap="small")
-            for col, (image_name, image_path) in zip(img_cols, images):
+            image_data_uris = [
+                f"data:image/png;base64,{base64.b64encode(p.read_bytes()).decode('utf-8')}" for _, p in images
+            ]
+
+            clicked = clickable_images(
+                image_data_uris,
+                titles=[name for name, _ in images],
+                div_style={"display": "flex", "justify-content": "space-between", "flex-wrap": "nowrap"},
+                img_style={"height": "90px", "cursor": "pointer"},
+            )
+
+            if clicked is not None and int(clicked) >= 0:
+                image_name, image_path = images[int(clicked)]
+
+                @st.dialog(image_name)
+                def _show_image_dialog() -> None:
+                    st.image(str(image_path), use_container_width=True)
+
+                _show_image_dialog()
+
+            note_cols = st.columns(len(images), gap="small")
+            for col, (image_name, _) in zip(note_cols, images):
                 with col:
-                    # Make the thumbnail clickable (opens full-size image in a new tab).
-                    image_bytes = image_path.read_bytes()
-                    data_uri = f"data:image/png;base64,{base64.b64encode(image_bytes).decode('utf-8')}"
-                    st.markdown(
-                        f'<a href="{data_uri}" target="_blank"><img src="{data_uri}" style="width:100%; height:auto;"/></a>',
-                        unsafe_allow_html=True,
-                    )
                     st.text_area(
                         "Explanation",
                         key=f"_img_note::{image_name}",
