@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from math import cos, pi, tau
 
+from dataclasses import dataclass
+
 import fullcontrol as fc
 
 
@@ -121,3 +123,160 @@ def add_cardinal_frame(
     for p_inner, p_outer in arm_specs:
         steps.extend(fc.travel_to(p_inner))
         steps.append(p_outer)
+
+
+@dataclass(frozen=True)
+class CardinalEndpoints:
+    east: fc.Point
+    west: fc.Point
+    north: fc.Point
+    south: fc.Point
+
+
+def _clamp_along_perp_to_bbox(
+    *,
+    base: fc.Point,
+    perp_x: float,
+    perp_y: float,
+    desired_s: float,
+    min_x: float,
+    max_x: float,
+    min_y: float,
+    max_y: float,
+) -> float:
+    s_min = float("-inf")
+    s_max = float("inf")
+
+    # base.x + perp_x*s <= max_x
+    if perp_x > 1e-12:
+        s_max = min(s_max, (max_x - base.x) / perp_x)
+    elif perp_x < -1e-12:
+        s_min = max(s_min, (max_x - base.x) / perp_x)
+    # base.x + perp_x*s >= min_x
+    if perp_x > 1e-12:
+        s_min = max(s_min, (min_x - base.x) / perp_x)
+    elif perp_x < -1e-12:
+        s_max = min(s_max, (min_x - base.x) / perp_x)
+
+    # base.y + perp_y*s <= max_y
+    if perp_y > 1e-12:
+        s_max = min(s_max, (max_y - base.y) / perp_y)
+    elif perp_y < -1e-12:
+        s_min = max(s_min, (max_y - base.y) / perp_y)
+    # base.y + perp_y*s >= min_y
+    if perp_y > 1e-12:
+        s_min = max(s_min, (min_y - base.y) / perp_y)
+    elif perp_y < -1e-12:
+        s_max = min(s_max, (min_y - base.y) / perp_y)
+
+    if s_min > s_max:
+        return 0.0
+    return max(s_min, min(s_max, desired_s))
+
+
+def add_patterned_cardinal_frame(
+    *,
+    steps: list,
+    centre: fc.Point,
+    z: float,
+    frame_rad_inner: float,
+    bbox_min_x: float,
+    bbox_max_x: float,
+    bbox_min_y: float,
+    bbox_max_y: float,
+    endpoints: CardinalEndpoints,
+    ew: float,
+    eh: float,
+    print_speed: float,
+    frame_width_factor: float = 2.5,
+    layer_ratio: int = 2,
+    segs_inner: int = 96,
+    segs_arm: int = 80,
+    amp: float = 12.0,
+) -> None:
+    """Append a centered patterned 4-arm frame aligned to N/S/E/W.
+
+    - Uses an inner ring around the hole.
+    - Each arm is a wavy curve that starts/ends exactly on the inner ring and
+      the supplied endpoint.
+    - Every point is clamped to the supplied bounding box (typically inset by
+      half the extrusion width), so the frame does not protrude.
+    """
+
+    centre_z = fc.Point(x=float(centre.x), y=float(centre.y), z=float(z))
+
+    # Ensure bbox is sane.
+    min_x = float(min(bbox_min_x, bbox_max_x))
+    max_x = float(max(bbox_min_x, bbox_max_x))
+    min_y = float(min(bbox_min_y, bbox_max_y))
+    max_y = float(max(bbox_min_y, bbox_max_y))
+
+    inner_r = max(0.0, float(frame_rad_inner))
+    ew_eff = float(ew) * float(frame_width_factor)
+    eh_eff = float(eh) * int(layer_ratio)
+
+    steps.append(fc.ExtrusionGeometry(width=ew_eff, height=eh_eff))
+    steps.append(fc.Printer(print_speed=float(print_speed) / (float(frame_width_factor) * int(layer_ratio))))
+
+    # Inner ring (clamped to bbox, although it should already be inside).
+    inner_ring = fc.arcXY(centre_z, inner_r, 0.0, tau, int(segs_inner))
+    if len(inner_ring) > 0:
+        steps.extend(fc.travel_to(inner_ring[0]))
+        for p in inner_ring:
+            steps.append(
+                fc.Point(
+                    x=max(min_x, min(max_x, p.x)),
+                    y=max(min_y, min(max_y, p.y)),
+                    z=p.z,
+                )
+            )
+
+    # Arm helper.
+    def add_arm(end: fc.Point) -> None:
+        dx = float(end.x) - float(centre_z.x)
+        dy = float(end.y) - float(centre_z.y)
+        d = (dx * dx + dy * dy) ** 0.5
+        if d <= 1e-9:
+            return
+        ux = dx / d
+        uy = dy / d
+        start = fc.Point(x=centre_z.x + ux * inner_r, y=centre_z.y + uy * inner_r, z=centre_z.z)
+
+        # Perp unit.
+        perp_x = -uy
+        perp_y = ux
+
+        # Cap amplitude relative to bbox.
+        max_amp = 0.45 * min(max_x - min_x, max_y - min_y)
+        arm_amp = max(0.0, min(float(amp), max_amp))
+
+        pts: list[fc.Point] = []
+        for i in range(int(segs_arm) + 1):
+            t = i / float(segs_arm)
+            base_x = float(start.x) + (float(end.x) - float(start.x)) * t
+            base_y = float(start.y) + (float(end.y) - float(start.y)) * t
+            base = fc.Point(x=base_x, y=base_y, z=centre_z.z)
+
+            desired_s = (0.5 - 0.5 * cos(2.0 * pi * t)) * arm_amp
+            # Alternate side for some texture.
+            desired_s *= cos(pi * t)
+            s = _clamp_along_perp_to_bbox(
+                base=base,
+                perp_x=perp_x,
+                perp_y=perp_y,
+                desired_s=desired_s,
+                min_x=min_x,
+                max_x=max_x,
+                min_y=min_y,
+                max_y=max_y,
+            )
+            pts.append(fc.Point(x=base.x + perp_x * s, y=base.y + perp_y * s, z=base.z))
+
+        if len(pts) > 0:
+            steps.extend(fc.travel_to(pts[0]))
+            steps.extend(pts)
+
+    add_arm(endpoints.north)
+    add_arm(endpoints.south)
+    add_arm(endpoints.east)
+    add_arm(endpoints.west)

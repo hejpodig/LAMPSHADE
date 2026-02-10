@@ -5,7 +5,7 @@ from math import cos, sin, tau
 
 import fullcontrol as fc
 
-from frame import add_cardinal_frame
+from frame import CardinalEndpoints, add_patterned_cardinal_frame
 
 
 @dataclass
@@ -72,14 +72,15 @@ def build_ripple_texture_steps(params: RippleTextureParams) -> tuple[list, fc.Pl
     steps: list = []
     steps.append(fc.Printer(print_speed=print_speed / 2.0))
 
-    # Add the centered 4-arm base frame aligned to N/S/E/W.
-    # Compute the shape's actual extents on the first layer so arms terminate
-    # exactly at the furthest north/south/east/west points.
+    # Add the centered patterned 4-arm base frame.
+    # For each frame layer, compute the shape's extents on that same Z height
+    # and clamp the frame to those bounds so it never protrudes.
     frame_hole_diameter = 30.0
     frame_height = 3.0
+    frame_width_factor = 2.5
     frame_rad_inner = (frame_hole_diameter / 2.0) + (ew / 2.0)
+    frame_margin = (ew * frame_width_factor) / 2.0
 
-    # Estimate bounds by sampling one full revolution on the first layer.
     inner_rad = float(params.inner_rad)
     rip_depth = float(params.rip_depth)
     tip_length = float(params.tip_length)
@@ -89,47 +90,76 @@ def build_ripple_texture_steps(params: RippleTextureParams) -> tuple[list, fc.Pl
     star_tips = int(params.star_tips)
     a_scale = 1.0 + (skew_percent / 100.0) / max(layers, 1)
 
-    min_x = 0.0
-    max_x = 0.0
-    min_y = 0.0
-    max_y = 0.0
-    for t in range(int(layer_segs)):
-        t_val = t / float(layer_segs)
-        a_now = (t_val * tau * a_scale) - (tau / 4.0)
-        ripple_wave = rip_depth * (0.5 + (0.5 * cos((ripples_per_layer + 0.5) * (t_val * tau))))
-        star_wave = tip_length * (0.5 - 0.5 * cos(star_tips * (t_val * tau))) ** shape_factor if star_tips else 0.0
-        bulge_wave = 0.0  # z==0
-        r_now = inner_rad + ripple_wave + star_wave + bulge_wave
-        x = r_now * cos(a_now)
-        y = r_now * sin(a_now)
-        if t == 0:
-            min_x = max_x = x
-            min_y = max_y = y
-        else:
-            min_x = min(min_x, x)
-            max_x = max(max_x, x)
-            min_y = min(min_y, y)
-            max_y = max(max_y, y)
-
-    extent_east = max_x
-    extent_west = -min_x
-    extent_north = max_y
-    extent_south = -min_y
-
     frame_layers = int(frame_height / eh) if frame_height > 0 else 0
     for layer in range(max(0, frame_layers)):
-        add_cardinal_frame(
+        z_frame = float(layer) * float(eh)
+        # Sample one revolution at this Z to find the true extrema points.
+        min_x = max_x = 0.0
+        min_y = max_y = 0.0
+        x_at_max_y = 0.0
+        x_at_min_y = 0.0
+        y_at_max_x = 0.0
+        y_at_min_x = 0.0
+        found_first = False
+
+        bulge_wave = bulge * (sin((z_frame / height) * (0.5 * tau))) if height else 0.0
+
+        for t in range(int(layer_segs)):
+            t_val = t / float(layer_segs)
+            a_now = (t_val * tau * a_scale) - (tau / 4.0)
+            ripple_wave = rip_depth * (0.5 + (0.5 * cos((ripples_per_layer + 0.5) * (t_val * tau))))
+            star_wave = tip_length * (0.5 - 0.5 * cos(star_tips * (t_val * tau))) ** shape_factor if star_tips else 0.0
+            r_now = inner_rad + ripple_wave + star_wave + bulge_wave
+            x = r_now * cos(a_now)
+            y = r_now * sin(a_now)
+
+            if not found_first:
+                min_x = max_x = x
+                min_y = max_y = y
+                x_at_max_y = x_at_min_y = x
+                y_at_max_x = y_at_min_x = y
+                found_first = True
+            else:
+                if x > max_x:
+                    max_x = x
+                    y_at_max_x = y
+                if x < min_x:
+                    min_x = x
+                    y_at_min_x = y
+                if y > max_y:
+                    max_y = y
+                    x_at_max_y = x
+                if y < min_y:
+                    min_y = y
+                    x_at_min_y = x
+
+        bbox_min_x = min_x + frame_margin
+        bbox_max_x = max_x - frame_margin
+        bbox_min_y = min_y + frame_margin
+        bbox_max_y = max_y - frame_margin
+
+        # Endpoints pulled in by frame_margin so the frame's extrusion width stays within bounds.
+        endpoints = CardinalEndpoints(
+            east=fc.Point(x=float(max_x - frame_margin), y=float(y_at_max_x), z=z_frame),
+            west=fc.Point(x=float(min_x + frame_margin), y=float(y_at_min_x), z=z_frame),
+            north=fc.Point(x=float(x_at_max_y), y=float(max_y - frame_margin), z=z_frame),
+            south=fc.Point(x=float(x_at_min_y), y=float(min_y + frame_margin), z=z_frame),
+        )
+
+        add_patterned_cardinal_frame(
             steps=steps,
             centre=fc.Point(x=0, y=0, z=0),
-            z=float(layer) * float(eh),
+            z=z_frame,
             frame_rad_inner=float(frame_rad_inner),
-            extent_east=float(extent_east),
-            extent_west=float(extent_west),
-            extent_north=float(extent_north),
-            extent_south=float(extent_south),
+            bbox_min_x=float(bbox_min_x),
+            bbox_max_x=float(bbox_max_x),
+            bbox_min_y=float(bbox_min_y),
+            bbox_max_y=float(bbox_max_y),
+            endpoints=endpoints,
             ew=float(ew),
             eh=float(eh),
             print_speed=float(print_speed),
+            frame_width_factor=float(frame_width_factor),
         )
 
     centre_now = fc.Point(x=0, y=0, z=0)
