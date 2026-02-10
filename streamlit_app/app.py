@@ -29,6 +29,12 @@ from plotting import plotdata_to_figure
 
 st.set_page_config(page_title="FullControl Lampshade", layout="wide")
 
+st.title("FullControl Lampshade")
+st.caption(
+    "This app was edited from the already functional fullcontrol.xyz lampshade editor. "
+    "If you dont know how to edit GCode or basic troubleshooting this tool is not made for you."
+)
+
 
 _PRESET_VERSION = 1
 
@@ -601,8 +607,6 @@ def _build_params_from_ui() -> LampshadeParams:
             else:
                 st.session_state.pop("_preset_upload_token", None)
 
-    st.markdown("### Preview")
-
     if "last_params" not in st.session_state:
         st.session_state.last_params = None
     if "last_result" not in st.session_state:
@@ -751,11 +755,5 @@ def _build_params_from_ui() -> LampshadeParams:
 
     return params
 
-
-st.title("FullControl Lampshade")
-st.caption(
-    "This app was edited from the already functional fullcontrol.xyz lampshade editor. "
-    "If you dont know how to edit GCode or basic troubleshooting this tool is not made for you."
-)
 
 _ = _build_params_from_ui()
