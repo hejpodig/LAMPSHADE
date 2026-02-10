@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from math import cos, pi, sin, tau
+from math import atan2, cos, pi, sin, tau
 
 from dataclasses import dataclass
 
@@ -486,67 +486,45 @@ def add_nsew_wave_frame_connected_to_shell(
     steps.append(fc.ExtrusionGeometry(width=ew_eff, height=eh_eff))
     steps.append(fc.Printer(print_speed=float(print_speed) / (float(frame_width_factor) * int(layer_ratio))))
 
-    # Inner ring.
-    ring = fc.arcXY(centre_z, inner_r, 0.0, tau, int(segs_inner))
-    if ring:
-        steps.extend(fc.travel_to(ring[0]))
-        steps.extend(ring)
+    # Drop the closing point if the shell is explicitly closed.
+    if n >= 2:
+        p0 = shell_points[0]
+        p_last = shell_points[-1]
+        if abs(float(p0.x) - float(p_last.x)) < 1e-9 and abs(float(p0.y) - float(p_last.y)) < 1e-9:
+            shell_points = shell_points[:-1]
+            n = len(shell_points)
+            if n < 4:
+                return
 
-    # Pick start points on the ring (nearest by direction) to ensure connection.
-    def pick_ring_start(end: fc.Point) -> fc.Point:
-        if not ring:
-            # Idealized start on the true circle.
-            dx = float(end.x) - centre_z.x
-            dy = float(end.y) - centre_z.y
-            d = (dx * dx + dy * dy) ** 0.5
-            if d <= 1e-9:
-                return centre_z
-            return fc.Point(x=centre_z.x + dx / d * inner_r, y=centre_z.y + dy / d * inner_r, z=centre_z.z)
-
-        dx = float(end.x) - centre_z.x
-        dy = float(end.y) - centre_z.y
-        d = (dx * dx + dy * dy) ** 0.5
-        if d <= 1e-9:
-            return ring[0]
-        ux, uy = dx / d, dy / d
-        best = ring[0]
-        best_dot = (float(best.x) - centre_z.x) * ux + (float(best.y) - centre_z.y) * uy
-        for p in ring[1:]:
-            dot = (float(p.x) - centre_z.x) * ux + (float(p.y) - centre_z.y) * uy
-            if dot > best_dot:
-                best_dot = dot
-                best = p
-        return best
-
-    def add_arm_to_shell(idx: int) -> None:
-        end_raw = shell_points[idx]
-        end = fc.Point(x=float(end_raw.x), y=float(end_raw.y), z=float(z))
-
-        start = pick_ring_start(end)
+    def _one_sided_wave(
+        *,
+        start: fc.Point,
+        end: fc.Point,
+        perp_x: float,
+        perp_y: float,
+        sign: float,
+    ) -> list[fc.Point]:
         dx = float(end.x) - float(start.x)
         dy = float(end.y) - float(start.y)
-        d = (dx * dx + dy * dy) ** 0.5
-        if d <= 1e-9:
-            return
+        if (dx * dx + dy * dy) ** 0.5 <= 1e-9:
+            return []
 
-        ux = dx / d
-        uy = dy / d
-        perp_x = -uy
-        perp_y = ux
-
-        arm_pts: list[fc.Point] = []
+        pts: list[fc.Point] = []
         wave_n = max(1, int(wave_count))
         for i in range(int(segs_arm) + 1):
             t = i / float(segs_arm)
             base_x = float(start.x) + dx * t
             base_y = float(start.y) + dy * t
+            base = fc.Point(x=base_x, y=base_y, z=centre_z.z)
 
-            envelope = sin(pi * t)  # 0 at ends.
-            desired_s = float(amp) * envelope * sin(wave_n * 2.0 * pi * t)
+            # One-sided waveform: always >= 0. Exactly `wave_n` bumps.
+            bumps = 0.5 - 0.5 * cos((t**0.66) * wave_n * 2.0 * pi)
+            envelope = sin(pi * t)  # forces 0 at both ends
+            desired_s = float(sign) * float(amp) * envelope * bumps
 
             if clamp_enabled:
                 s = _clamp_along_perp_to_bbox(
-                    base=fc.Point(x=base_x, y=base_y, z=centre_z.z),
+                    base=base,
                     perp_x=perp_x,
                     perp_y=perp_y,
                     desired_s=desired_s,
@@ -558,15 +536,47 @@ def add_nsew_wave_frame_connected_to_shell(
             else:
                 s = desired_s
 
-            arm_pts.append(fc.Point(x=base_x + perp_x * s, y=base_y + perp_y * s, z=centre_z.z))
+            pts.append(fc.Point(x=base.x + perp_x * s, y=base.y + perp_y * s, z=base.z))
 
-        if not arm_pts:
+        return pts
+
+    def add_arm_to_shell(idx: int) -> None:
+        end_raw = shell_points[idx]
+        end = fc.Point(x=float(end_raw.x), y=float(end_raw.y), z=float(z))
+
+        # Radial axis (for mirroring) from the centre to the shell contact.
+        theta = atan2(float(end.y) - float(centre_z.y), float(end.x) - float(centre_z.x))
+        ux = cos(theta)
+        uy = sin(theta)
+        perp_x = -uy
+        perp_y = ux
+
+        # Use the legacy sector half-angle so each arm has two mirrored wave sides.
+        beta = pi / 4.0
+        inner_a = fc.polar_to_point(centre_z, inner_r, theta - beta)
+        inner_b = fc.polar_to_point(centre_z, inner_r, theta + beta)
+
+        wave_a = _one_sided_wave(start=end, end=inner_a, perp_x=perp_x, perp_y=perp_y, sign=+1.0)
+        if not wave_a:
             return
 
-        steps.extend(fc.travel_to(arm_pts[0]))
-        steps.extend(arm_pts)
+        wave_b_e_to_inner = _one_sided_wave(start=end, end=inner_b, perp_x=perp_x, perp_y=perp_y, sign=-1.0)
+        if not wave_b_e_to_inner:
+            return
+        wave_b = list(reversed(wave_b_e_to_inner))
 
-        # Embed into the shell path for stronger merge.
+        # Inner arc connecting the mirrored waves (together, arms cover the full ring).
+        arc_len = 2.0 * beta
+        segs_arc = max(8, int(float(segs_inner) * (arc_len / tau)))
+        inner_arc = fc.arcXY(centre_z, inner_r, theta - beta, arc_len, segs_arc)
+
+        steps.extend(fc.travel_to(wave_a[0]))
+        steps.extend(wave_a)
+        if inner_arc:
+            steps.extend(inner_arc)
+        steps.extend(wave_b)
+
+        # Embed into the shell path for stronger merge at the contact.
         embed_n = max(0, int(embed_segments))
         for k in range(1, embed_n + 1):
             p = shell_points[(idx + k) % n]
