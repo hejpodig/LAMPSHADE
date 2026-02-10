@@ -5,6 +5,8 @@ from math import tau
 
 import fullcontrol as fc
 
+from frame import add_lampshade_frame
+
 
 @dataclass
 class BlobPrintingParams:
@@ -71,6 +73,27 @@ def build_blob_printing_steps(params: BlobPrintingParams) -> tuple[list, fc.Plot
     angle_between_blobs = tau / blobs_per_layer
 
     steps: list = []
+
+    # Add the lampshade-style inner frame (4 contact sectors) to help bed adhesion.
+    # Fixed dimensions to match the lampshade defaults.
+    frame_hole_diameter = 30.0
+    frame_height = 3.0
+    frame_overlap = 2.5
+    frame_rad_inner = (frame_hole_diameter / 2.0) + (blob_size / 2.0)
+    frame_rad_max = tube_radius + (blob_size / 2.0) + frame_overlap
+    frame_layers = int(frame_height / blob_height) if frame_height > 0 else 0
+    for layer in range(max(0, frame_layers)):
+        add_lampshade_frame(
+            steps=steps,
+            centre=fc.Point(x=0, y=0, z=0),
+            z=float(layer) * float(blob_height),
+            frame_rad_inner=float(frame_rad_inner),
+            frame_rad_max=float(frame_rad_max),
+            ew=float(blob_size),
+            eh=float(blob_height),
+            print_speed=100.0,
+            contact_points=4,
+        )
 
     # primer line
     steps.extend(

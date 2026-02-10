@@ -7,6 +7,8 @@ from math import cos, exp, pi, sin, tau
 import fullcontrol as fc
 import lab.fullcontrol as fclab
 
+from frame import add_lampshade_frame
+
 
 @dataclass(frozen=True)
 class LampshadeParams:
@@ -192,20 +194,24 @@ def build_lampshade_steps(params: LampshadeParams):
             (target == "gcode" and layer % params.layer_ratio == params.layer_ratio - 1 and layer < frame_layers)
             or (target == "visualize" and layer == 0 and frame_height > 0)
         ):
-            for t_now in t_steps_frame_line:
-                x_now = centre_xy + (params.frame_line_spacing_ratio * (params.frame_width_factor * EW)) + (amp_1 * t_now) * (
-                    (0.5 - 0.5 * cos((t_now**0.66) * 3 * tau)) ** 1
-                )
-                y_now = centre_xy - frame_rad_inner - ((frame_rad_max - frame_rad_inner) * (1 - t_now))
-                wave_steps.append(fc.Point(x=x_now, y=y_now, z=z_now))
-            wave_steps.extend(fc.arcXY(centre_now, frame_rad_inner, params.start_angle, pi / max(n_tip, 1), int(64 / max(n_tip, 1))))
-            wave_steps.extend(fclab.reflectXYpolar_list(wave_steps, centre_now, params.start_angle + pi / max(n_tip, 1)))
-            wave_steps = fc.move_polar(wave_steps, centre_now, 0, tau / max(n_tip, 1), copy=True, copy_quantity=n_tip)
-            # Intentionally do NOT apply twist to the inner frame.
-
-            steps.append(fc.ExtrusionGeometry(width=EW * params.frame_width_factor, height=EH * params.layer_ratio))
-            steps.append(fc.Printer(print_speed=print_speed / (params.frame_width_factor * params.layer_ratio)))
-            steps.extend(wave_steps)
+            # Lampshade frame: force 4 contact sectors regardless of star tip count.
+            add_lampshade_frame(
+                steps=steps,
+                centre=centre_now,
+                z=z_now,
+                frame_rad_inner=float(frame_rad_inner),
+                frame_rad_max=float(frame_rad_max),
+                ew=float(EW),
+                eh=float(EH),
+                print_speed=float(print_speed),
+                contact_points=4,
+                amp=float(amp_1),
+                frame_width_factor=float(params.frame_width_factor),
+                frame_line_spacing_ratio=float(params.frame_line_spacing_ratio),
+                layer_ratio=int(params.layer_ratio),
+                segs_frame=int(params.segs_frame),
+                start_angle=float(params.start_angle),
+            )
 
     steps.append(
         fc.PlotAnnotation(
