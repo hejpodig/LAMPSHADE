@@ -31,11 +31,25 @@ from plotting import plotdata_to_figure
 
 st.set_page_config(page_title="FullControl Lampshade", layout="wide")
 
+
+def _get_git_sha() -> str | None:
+    try:
+        import subprocess
+
+        sha = subprocess.check_output(["git", "rev-parse", "--short", "HEAD"], cwd=_REPO_ROOT, text=True).strip()
+        return sha or None
+    except Exception:
+        return None
+
 st.title("FullControl Lampshade")
 st.caption(
     "This app was edited from the already functional fullcontrol.xyz lampshade editor. "
     "If you dont know how to edit GCode or basic troubleshooting this tool is not made for you."
 )
+
+_sha = _get_git_sha()
+if _sha:
+    st.sidebar.caption(f"Build: {_sha}")
 
 
 _PRESET_VERSION = 1

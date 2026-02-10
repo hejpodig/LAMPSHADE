@@ -2,5 +2,10 @@
 streamlit>=1.31
 streamlit-clickable-images
 
-# Install FullControl from the local source folder (brings plotly/numpy/pydantic deps)
--e ./fullcontrol
+# Core deps used by the app and FullControl
+plotly
+pydantic
+numpy
+
+# Install FullControl from the local source folder (non-editable is more reliable on Streamlit Cloud)
+./fullcontrol
