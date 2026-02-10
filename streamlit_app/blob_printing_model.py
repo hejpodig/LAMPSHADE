@@ -60,7 +60,9 @@ def build_blob_printing_steps(params: BlobPrintingParams) -> tuple[list, fc.Plot
     initial_z = 0.95 * blob_height
 
     def move_and_blob(steps: list, point: fc.Point, volume: float, extrusion_speed_now: float) -> None:
-        steps.extend([point, fc.StationaryExtrusion(volume=volume, speed=extrusion_speed_now)])
+        # StationaryExtrusion doesn't create a path segment, so add an empty PlotAnnotation.
+        # The visualizer uses this to draw a node marker (matching the demo notebook).
+        steps.extend([point, fc.StationaryExtrusion(volume=volume, speed=extrusion_speed_now), fc.PlotAnnotation(label="")])
 
     blobs_per_layer = int(tau * tube_radius / blob_spacing)
     blobs_per_layer = max(blobs_per_layer, 2)
@@ -111,6 +113,20 @@ def build_blob_printing_steps(params: BlobPrintingParams) -> tuple[list, fc.Plot
     # Offset procedure
     steps = fc.move(steps, fc.Vector(x=float(params.centre_x), y=float(params.centre_y), z=float(initial_z)))
 
+    if params.Annotations:
+        steps.append(
+            fc.PlotAnnotation(
+                point=fc.Point(x=float(params.centre_x), y=float(params.centre_y), z=blob_height * layers * 2),
+                label="Nodes in this preview show where blobs are deposited, but do not represent the size of blobs",
+            )
+        )
+        steps.append(
+            fc.PlotAnnotation(
+                point=fc.Point(x=float(params.centre_x), y=float(params.centre_y), z=blob_height * layers * 1.5),
+                label=f"For this blob volume ({blob_vol:.1f} mm3) a good blob extrusion speed may take about {blob_vol/4:.1f}-{blob_vol/2:.1f} seconds per blob",
+            )
+        )
+
     gcode_controls = fc.GcodeControls(
         printer_name=params.Printer_name,
         save_as=params.Design_name,
@@ -126,7 +142,11 @@ def build_blob_printing_steps(params: BlobPrintingParams) -> tuple[list, fc.Plot
         },
     )
 
-    plot_controls = fc.PlotControls(style="line", zoom=0.9, initialization_data={"extrusion_width": blob_size, "extrusion_height": blob_height})
+    plot_controls = fc.PlotControls(
+        style="line",
+        zoom=0.9,
+        initialization_data={"extrusion_width": blob_size, "extrusion_height": blob_height},
+    )
     plot_controls.hide_annotations = not params.Annotations
 
     return steps, plot_controls, gcode_controls
