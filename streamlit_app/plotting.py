@@ -6,7 +6,7 @@ from fullcontrol.visualize.plot_data import PlotData
 from fullcontrol.visualize.controls import PlotControls
 
 
-def plotdata_to_figure(data: PlotData, controls: PlotControls) -> go.Figure:
+def plotdata_to_figure(data: PlotData, controls: PlotControls, *, line_color_override: str | None = None) -> go.Figure:
     """Create a Plotly Figure from FullControl PlotData.
 
     Mirrors fullcontrol.visualize.plotly.plot(), but returns a Figure.
@@ -24,6 +24,7 @@ def plotdata_to_figure(data: PlotData, controls: PlotControls) -> go.Figure:
         max_width = max(max_width, linewidth_now)
 
         if (not controls.hide_travel) or path.extruder.on:
+            line_color = line_color_override if line_color_override else colors_now
             fig.add_trace(
                 go.Scatter3d(
                     mode="lines",
@@ -31,7 +32,7 @@ def plotdata_to_figure(data: PlotData, controls: PlotControls) -> go.Figure:
                     y=path.yvals,
                     z=path.zvals,
                     showlegend=False,
-                    line=dict(width=linewidth_now, color=colors_now),
+                    line=dict(width=linewidth_now, color=line_color),
                 )
             )
 

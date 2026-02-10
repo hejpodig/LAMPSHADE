@@ -776,6 +776,13 @@ def _build_params_from_ui() -> LampshadeParams | RippleTextureParams:
             color_scheme_label = st.selectbox(
                 "Line colors",
                 [
+                    "Blue (default)",
+                    "White",
+                    "Black",
+                    "Purple",
+                    "Blue",
+                    "Yellow",
+                    "Green",
                     "Z gradient (default)",
                     "Print sequence",
                     "Print sequence (fluctuating)",
@@ -967,6 +974,17 @@ def _build_params_from_ui() -> LampshadeParams | RippleTextureParams:
                 if params.Output in ["Simple Plot", "Detailed Plot"]:
                     plot_controls.raw_data = True
                     # Apply preview color scheme.
+                    _solid_color_map = {
+                        "Blue (default)": None,
+                        "White": "#FFFFFF",
+                        "Black": "#000000",
+                        "Purple": "#A855F7",
+                        "Blue": "#3B82F6",
+                        "Yellow": "#FACC15",
+                        "Green": "#22C55E",
+                    }
+                    solid_override = _solid_color_map.get(color_scheme_label)
+
                     _color_type_map = {
                         "Z gradient (default)": "z_gradient",
                         "Print sequence": "print_sequence",
@@ -975,7 +993,7 @@ def _build_params_from_ui() -> LampshadeParams | RippleTextureParams:
                     }
                     plot_controls.color_type = _color_type_map.get(color_scheme_label, "z_gradient")
                     plot_data = fc.transform(steps, "plot", plot_controls)
-                    fig = plotdata_to_figure(plot_data, plot_controls)
+                    fig = plotdata_to_figure(plot_data, plot_controls, line_color_override=solid_override)
                     st.session_state.last_result = {"type": "plot", "fig": fig}
                 else:
                     gcode_str = fc.transform(steps, "gcode", gcode_controls)
