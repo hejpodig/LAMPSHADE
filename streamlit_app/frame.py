@@ -133,6 +133,123 @@ class CardinalEndpoints:
     south: fc.Point
 
 
+def _clamp_point_to_bbox_ray(
+    *,
+    p: fc.Point,
+    centre: fc.Point,
+    min_x: float,
+    max_x: float,
+    min_y: float,
+    max_y: float,
+) -> fc.Point:
+    """Clamp a point to an axis-aligned bbox by scaling the ray from centre->p.
+
+    This preserves the point's direction from the centre better than clamping
+    x/y independently.
+    """
+
+    dx = float(p.x) - float(centre.x)
+    dy = float(p.y) - float(centre.y)
+
+    # If already inside (or degenerate), keep as-is.
+    if (min_x <= p.x <= max_x) and (min_y <= p.y <= max_y):
+        return p
+    if abs(dx) < 1e-12 and abs(dy) < 1e-12:
+        return fc.Point(x=max(min_x, min(max_x, float(p.x))), y=max(min_y, min(max_y, float(p.y))), z=float(p.z))
+
+    t_candidates: list[float] = [1.0]
+
+    if abs(dx) >= 1e-12:
+        t_candidates.append((max_x - float(centre.x)) / dx)
+        t_candidates.append((min_x - float(centre.x)) / dx)
+    if abs(dy) >= 1e-12:
+        t_candidates.append((max_y - float(centre.y)) / dy)
+        t_candidates.append((min_y - float(centre.y)) / dy)
+
+    # Choose the largest t in [0,1] that puts us inside.
+    t_best = 0.0
+    for t in t_candidates:
+        if not (0.0 <= t <= 1.0):
+            continue
+        x = float(centre.x) + dx * t
+        y = float(centre.y) + dy * t
+        if (min_x - 1e-9) <= x <= (max_x + 1e-9) and (min_y - 1e-9) <= y <= (max_y + 1e-9):
+            t_best = max(t_best, t)
+
+    return fc.Point(x=float(centre.x) + dx * t_best, y=float(centre.y) + dy * t_best, z=float(p.z))
+
+
+def add_legacy_pattern_frame_clamped(
+    *,
+    steps: list,
+    centre: fc.Point,
+    z: float,
+    frame_rad_inner: float,
+    frame_rad_max: float,
+    bbox_min_x: float,
+    bbox_max_x: float,
+    bbox_min_y: float,
+    bbox_max_y: float,
+    ew: float,
+    eh: float,
+    print_speed: float,
+    contact_points: int = 4,
+    amp: float = 17.5,
+    frame_width_factor: float = 2.5,
+    frame_line_spacing_ratio: float = 0.2,
+    layer_ratio: int = 2,
+    segs_frame: int = 64,
+    start_angle: float = -pi / 4,
+) -> None:
+    """Legacy lampshade frame pattern (wave + arc + reflect + rotate), clamped.
+
+    This matches the original lampshade frame pattern as closely as possible,
+    while ensuring no point protrudes outside the per-layer bounds.
+    """
+
+    contact_points = max(1, int(contact_points))
+    centre_z = fc.Point(x=float(centre.x), y=float(centre.y), z=float(z))
+    frame_rad_inner = max(0.0, float(frame_rad_inner))
+    frame_rad_max = max(frame_rad_inner, float(frame_rad_max))
+
+    min_x = float(min(bbox_min_x, bbox_max_x))
+    max_x = float(max(bbox_min_x, bbox_max_x))
+    min_y = float(min(bbox_min_y, bbox_max_y))
+    max_y = float(max(bbox_min_y, bbox_max_y))
+
+    t_steps_frame_line = fc.linspace(0, 1, int(segs_frame) + 1)
+
+    wave_steps: list[fc.Point] = []
+    for t_now in t_steps_frame_line:
+        x_now = centre_z.x + (frame_line_spacing_ratio * (frame_width_factor * float(ew))) + (float(amp) * t_now) * (
+            (0.5 - 0.5 * cos((t_now**0.66) * 3 * tau)) ** 1
+        )
+        y_now = centre_z.y - frame_rad_inner - ((frame_rad_max - frame_rad_inner) * (1 - t_now))
+        wave_steps.append(fc.Point(x=float(x_now), y=float(y_now), z=float(z)))
+
+    wave_steps.extend(
+        fc.arcXY(
+            centre_z,
+            frame_rad_inner,
+            float(start_angle),
+            pi / contact_points,
+            int(64 / contact_points),
+        )
+    )
+
+    wave_steps.extend(_reflectXYpolar_list(wave_steps, centre_z, float(start_angle) + pi / contact_points))
+    wave_steps = fc.move_polar(wave_steps, centre_z, 0, tau / contact_points, copy=True, copy_quantity=contact_points)
+
+    # Clamp points to the per-layer bbox.
+    clamped_steps: list[fc.Point] = [
+        _clamp_point_to_bbox_ray(p=p, centre=centre_z, min_x=min_x, max_x=max_x, min_y=min_y, max_y=max_y) for p in wave_steps
+    ]
+
+    steps.append(fc.ExtrusionGeometry(width=float(ew) * float(frame_width_factor), height=float(eh) * int(layer_ratio)))
+    steps.append(fc.Printer(print_speed=float(print_speed) / (float(frame_width_factor) * int(layer_ratio))))
+    steps.extend(clamped_steps)
+
+
 def _clamp_along_perp_to_bbox(
     *,
     base: fc.Point,

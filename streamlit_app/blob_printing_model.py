@@ -5,7 +5,7 @@ from math import tau
 
 import fullcontrol as fc
 
-from frame import CardinalEndpoints, add_patterned_cardinal_frame
+from frame import add_legacy_pattern_frame_clamped
 
 
 @dataclass
@@ -83,27 +83,28 @@ def build_blob_printing_steps(params: BlobPrintingParams) -> tuple[list, fc.Plot
     frame_margin = (blob_size * frame_width_factor) / 2.0
     frame_layers = int(frame_height / blob_height) if frame_height > 0 else 0
     for layer in range(max(0, frame_layers)):
-        # Constrain to the tube silhouette at this Z.
         bbox_min_x = -tube_radius + frame_margin
         bbox_max_x = tube_radius - frame_margin
         bbox_min_y = -tube_radius + frame_margin
         bbox_max_y = tube_radius - frame_margin
 
-        add_patterned_cardinal_frame(
+        frame_rad_max_layer = max(
+            float(bbox_max_x),
+            float(-bbox_min_x),
+            float(bbox_max_y),
+            float(-bbox_min_y),
+        )
+
+        add_legacy_pattern_frame_clamped(
             steps=steps,
             centre=fc.Point(x=0, y=0, z=0),
             z=float(layer) * float(blob_height),
             frame_rad_inner=float(frame_rad_inner),
+            frame_rad_max=float(frame_rad_max_layer),
             bbox_min_x=float(bbox_min_x),
             bbox_max_x=float(bbox_max_x),
             bbox_min_y=float(bbox_min_y),
             bbox_max_y=float(bbox_max_y),
-            endpoints=CardinalEndpoints(
-                east=fc.Point(x=float(bbox_max_x), y=0.0, z=0.0),
-                west=fc.Point(x=float(bbox_min_x), y=0.0, z=0.0),
-                north=fc.Point(x=0.0, y=float(bbox_max_y), z=0.0),
-                south=fc.Point(x=0.0, y=float(bbox_min_y), z=0.0),
-            ),
             ew=float(blob_size),
             eh=float(blob_height),
             print_speed=100.0,

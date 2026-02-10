@@ -5,7 +5,7 @@ from math import cos, sin, tau
 
 import fullcontrol as fc
 
-from frame import CardinalEndpoints, add_patterned_cardinal_frame
+from frame import add_legacy_pattern_frame_clamped
 
 
 @dataclass
@@ -133,29 +133,27 @@ def build_ripple_texture_steps(params: RippleTextureParams) -> tuple[list, fc.Pl
                     min_y = y
                     x_at_min_y = x
 
-        bbox_min_x = min_x + frame_margin
-        bbox_max_x = max_x - frame_margin
-        bbox_min_y = min_y + frame_margin
-        bbox_max_y = max_y - frame_margin
+        bbox_min_x = float(min_x) + frame_margin
+        bbox_max_x = float(max_x) - frame_margin
+        bbox_min_y = float(min_y) + frame_margin
+        bbox_max_y = float(max_y) - frame_margin
 
-        # Endpoints pulled in by frame_margin so the frame's extrusion width stays within bounds.
-        endpoints = CardinalEndpoints(
-            east=fc.Point(x=float(max_x - frame_margin), y=float(y_at_max_x), z=z_frame),
-            west=fc.Point(x=float(min_x + frame_margin), y=float(y_at_min_x), z=z_frame),
-            north=fc.Point(x=float(x_at_max_y), y=float(max_y - frame_margin), z=z_frame),
-            south=fc.Point(x=float(x_at_min_y), y=float(min_y + frame_margin), z=z_frame),
-        )
+        extent_east = float(bbox_max_x)
+        extent_west = float(-bbox_min_x)
+        extent_north = float(bbox_max_y)
+        extent_south = float(-bbox_min_y)
+        frame_rad_max_layer = max(extent_east, extent_west, extent_north, extent_south)
 
-        add_patterned_cardinal_frame(
+        add_legacy_pattern_frame_clamped(
             steps=steps,
             centre=fc.Point(x=0, y=0, z=0),
             z=z_frame,
             frame_rad_inner=float(frame_rad_inner),
+            frame_rad_max=float(frame_rad_max_layer),
             bbox_min_x=float(bbox_min_x),
             bbox_max_x=float(bbox_max_x),
             bbox_min_y=float(bbox_min_y),
             bbox_max_y=float(bbox_max_y),
-            endpoints=endpoints,
             ew=float(ew),
             eh=float(eh),
             print_speed=float(print_speed),

@@ -7,7 +7,7 @@ from math import cos, exp, pi, sin, tau
 import fullcontrol as fc
 import lab.fullcontrol as fclab
 
-from frame import CardinalEndpoints, add_patterned_cardinal_frame
+from frame import add_legacy_pattern_frame_clamped
 
 
 @dataclass(frozen=True)
@@ -194,46 +194,42 @@ def build_lampshade_steps(params: LampshadeParams):
             (target == "gcode" and layer % params.layer_ratio == params.layer_ratio - 1 and layer < frame_layers)
             or (target == "visualize" and layer == 0 and frame_height > 0)
         ):
-            # Compute per-layer bounds and extrema points.
-            east_pt = max(shell_steps, key=lambda p: p.x)
-            west_pt = min(shell_steps, key=lambda p: p.x)
-            north_pt = max(shell_steps, key=lambda p: p.y)
-            south_pt = min(shell_steps, key=lambda p: p.y)
-
-            min_x = float(west_pt.x)
-            max_x = float(east_pt.x)
-            min_y = float(south_pt.y)
-            max_y = float(north_pt.y)
+            min_x = min(p.x for p in shell_steps)
+            max_x = max(p.x for p in shell_steps)
+            min_y = min(p.y for p in shell_steps)
+            max_y = max(p.y for p in shell_steps)
 
             frame_margin = (float(EW) * float(params.frame_width_factor)) / 2.0
-            bbox_min_x = min_x + frame_margin
-            bbox_max_x = max_x - frame_margin
-            bbox_min_y = min_y + frame_margin
-            bbox_max_y = max_y - frame_margin
+            bbox_min_x = float(min_x) + frame_margin
+            bbox_max_x = float(max_x) - frame_margin
+            bbox_min_y = float(min_y) + frame_margin
+            bbox_max_y = float(max_y) - frame_margin
 
-            endpoints = CardinalEndpoints(
-                east=fc.Point(x=float(max_x - frame_margin), y=float(east_pt.y), z=z_now),
-                west=fc.Point(x=float(min_x + frame_margin), y=float(west_pt.y), z=z_now),
-                north=fc.Point(x=float(north_pt.x), y=float(max_y - frame_margin), z=z_now),
-                south=fc.Point(x=float(south_pt.x), y=float(min_y + frame_margin), z=z_now),
-            )
+            extent_east = float(bbox_max_x - centre_now.x)
+            extent_west = float(centre_now.x - bbox_min_x)
+            extent_north = float(bbox_max_y - centre_now.y)
+            extent_south = float(centre_now.y - bbox_min_y)
+            frame_rad_max_layer = max(extent_east, extent_west, extent_north, extent_south)
 
-            # Lampshade frame: patterned 4 arms, clamped to the shell bounds at this Z.
-            add_patterned_cardinal_frame(
+            add_legacy_pattern_frame_clamped(
                 steps=steps,
                 centre=centre_now,
                 z=z_now,
                 frame_rad_inner=float(frame_rad_inner),
+                frame_rad_max=float(frame_rad_max_layer),
                 bbox_min_x=float(bbox_min_x),
                 bbox_max_x=float(bbox_max_x),
                 bbox_min_y=float(bbox_min_y),
                 bbox_max_y=float(bbox_max_y),
-                endpoints=endpoints,
                 ew=float(EW),
                 eh=float(EH),
                 print_speed=float(print_speed),
+                contact_points=4,
+                amp=float(amp_1),
                 frame_width_factor=float(params.frame_width_factor),
+                frame_line_spacing_ratio=float(params.frame_line_spacing_ratio),
                 layer_ratio=int(params.layer_ratio),
+                segs_frame=int(params.segs_frame),
             )
 
     steps.append(
