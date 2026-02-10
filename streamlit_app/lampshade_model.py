@@ -9,10 +9,10 @@ import lab.fullcontrol as fclab
 
 try:
     # When imported as a package module (e.g. local dev).
-    from streamlit_app.frame import add_nsew_wave_frame_connected_to_shell
+    from streamlit_app.frame import add_cardinal_three_arc_frame
 except ModuleNotFoundError:
     # When Streamlit runs from within streamlit_app/ and imports models as top-level modules.
-    from frame import add_nsew_wave_frame_connected_to_shell
+    from frame import add_cardinal_three_arc_frame
 
 
 @dataclass(frozen=True)
@@ -197,8 +197,9 @@ def build_lampshade_steps(params: LampshadeParams):
             if len(shell_steps) > 0:
                 shell_steps.append(shell_steps[0])
 
-        if layer == 0 and frame_height > 0:
-            add_nsew_wave_frame_connected_to_shell(
+        # Frame: print on the second layer (layer index 1) to match the desired Z=0.34 in GCode mode.
+        if layer == 1 and frame_height > 0:
+            add_cardinal_three_arc_frame(
                 steps=steps,
                 centre=centre_now,
                 z=z_now,
@@ -210,7 +211,6 @@ def build_lampshade_steps(params: LampshadeParams):
                 frame_width_factor=float(params.frame_width_factor),
                 layer_ratio=int(params.layer_ratio),
                 amp=float(amp_1),
-                wave_count=3,
                 embed_segments=2,
             )
 

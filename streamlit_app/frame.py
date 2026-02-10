@@ -585,3 +585,248 @@ def add_nsew_wave_frame_connected_to_shell(
     # Print all 4 arms.
     for _, idx in targets:
         add_arm_to_shell(idx)
+
+
+def add_cardinal_three_arc_frame(
+    *,
+    steps: list,
+    centre: fc.Point,
+    z: float,
+    shell_points: list[fc.Point],
+    frame_rad_inner: float,
+    ew: float,
+    eh: float,
+    print_speed: float,
+    frame_width_factor: float = 2.5,
+    layer_ratio: int = 2,
+    segs_arm: int = 120,
+    segs_inner_quarter: int = 48,
+    amp: float = 17.5,
+    embed_segments: int = 2,
+) -> None:
+    """Cardinal (S->E->N->W) frame with exactly 3 arches per arm side.
+
+    Matches the requested sequencing:
+    - Start printing at the SOUTH outer contact point.
+    - For each arm: 3 arches outward + 3 arches back (double lines).
+    - Between arms: inner circle quarter-turn (pi/2).
+
+    The outer endpoints come from actual `shell_points` at the same Z.
+    """
+
+    if not shell_points:
+        return
+
+    n = len(shell_points)
+    if n < 8:
+        return
+
+    centre_z = fc.Point(x=float(centre.x), y=float(centre.y), z=float(z))
+
+    inner_r = max(0.0, float(frame_rad_inner))
+    ew_eff = float(ew) * float(frame_width_factor)
+    eh_eff = float(eh) * int(layer_ratio)
+
+    # Bounds for clamping the wave offsets.
+    min_x = min(float(p.x) for p in shell_points) + 0.5 * ew_eff
+    max_x = max(float(p.x) for p in shell_points) - 0.5 * ew_eff
+    min_y = min(float(p.y) for p in shell_points) + 0.5 * ew_eff
+    max_y = max(float(p.y) for p in shell_points) - 0.5 * ew_eff
+    clamp_enabled = (min_x <= max_x) and (min_y <= max_y)
+
+    def _argmax(points: list[fc.Point], key) -> int:
+        best_i = 0
+        best_v = key(points[0])
+        for i in range(1, len(points)):
+            v = key(points[i])
+            if v > best_v:
+                best_v = v
+                best_i = i
+        return best_i
+
+    def _argmin(points: list[fc.Point], key) -> int:
+        best_i = 0
+        best_v = key(points[0])
+        for i in range(1, len(points)):
+            v = key(points[i])
+            if v < best_v:
+                best_v = v
+                best_i = i
+        return best_i
+
+    # The user-specified start point is the shell loop start/end for this layer.
+    # Use it as the SOUTH arm contact, regardless of whether it's the absolute
+    # minimum-y point.
+    idx_s = 0
+    idx_e = _argmax(shell_points, lambda p: float(p.x))
+    idx_n = _argmax(shell_points, lambda p: float(p.y))
+    idx_w = _argmin(shell_points, lambda p: float(p.x))
+
+    # Order is S -> E -> N -> W.
+    arms: list[tuple[str, int]] = [("south", idx_s), ("east", idx_e), ("north", idx_n), ("west", idx_w)]
+
+    def _unit_from_centre(p: fc.Point) -> tuple[float, float, float]:
+        dx = float(p.x) - float(centre_z.x)
+        dy = float(p.y) - float(centre_z.y)
+        theta = atan2(dy, dx)
+        return cos(theta), sin(theta), theta
+
+    def _inner_point(theta: float) -> fc.Point:
+        return fc.polar_to_point(centre_z, inner_r, theta)
+
+    def _embed_from(idx: int) -> None:
+        embed_n = max(0, int(embed_segments))
+        for k in range(1, embed_n + 1):
+            p = shell_points[(idx + k) % n]
+            steps.append(fc.Point(x=float(p.x), y=float(p.y), z=float(z)))
+
+    def _diag_scale_for_bump3(*, theta: float, start: fc.Point, end: fc.Point, perp_x: float, perp_y: float) -> float:
+        """Scale factor so bump #3 peak on the +perp side reaches the diagonal to the next arm.
+
+        We target the diagonal ray at angle theta + pi/4.
+        """
+
+        wave_n = 3
+        t_peak3 = (wave_n - 0.5) / wave_n  # 2.5/3
+        bx = float(start.x) + (float(end.x) - float(start.x)) * t_peak3
+        by = float(start.y) + (float(end.y) - float(start.y)) * t_peak3
+        b = (bx - float(centre_z.x), by - float(centre_z.y))
+
+        diag_theta = float(theta) + (pi / 4.0)
+        u_dx = cos(diag_theta)
+        u_dy = sin(diag_theta)
+
+        # Solve det(u_d, b + perp*s) = 0  ->  s = -det(u_d, b)/det(u_d, perp)
+        det_ud_b = (u_dx * b[1]) - (u_dy * b[0])
+        det_ud_perp = (u_dx * perp_y) - (u_dy * perp_x)
+        if abs(det_ud_perp) < 1e-9:
+            return 1.0
+        s_needed = -det_ud_b / det_ud_perp
+        if s_needed <= 0.0:
+            return 1.0
+
+        envelope_peak = sin(pi * t_peak3)
+        if envelope_peak <= 1e-6:
+            return 1.0
+
+        base_amp = float(amp) * envelope_peak
+        if base_amp <= 1e-9:
+            return 1.0
+
+        scale = s_needed / base_amp
+        return max(1.0, min(3.0, float(scale)))
+
+    def _three_arch_wave(
+        *,
+        start: fc.Point,
+        end: fc.Point,
+        perp_x: float,
+        perp_y: float,
+        sign: float,
+        bump3_scale: float,
+    ) -> list[fc.Point]:
+        dx = float(end.x) - float(start.x)
+        dy = float(end.y) - float(start.y)
+        d = (dx * dx + dy * dy) ** 0.5
+        if d <= 1e-9:
+            return []
+
+        wave_n = 3
+        bump_scales = [0.5, 1.0, float(bump3_scale)]
+
+        pts: list[fc.Point] = []
+        for i in range(int(segs_arm) + 1):
+            t = i / float(segs_arm)
+            base_x = float(start.x) + dx * t
+            base_y = float(start.y) + dy * t
+            base = fc.Point(x=base_x, y=base_y, z=centre_z.z)
+
+            bump_pos = t * wave_n
+            bump_idx = int(min(wave_n - 1, max(0, int(bump_pos))))
+            u = bump_pos - bump_idx
+            # 0..1 bump shape, peak at u=0.5
+            bump = 0.5 - 0.5 * cos(2.0 * pi * u)
+
+            envelope = sin(pi * t)
+            desired_s = float(sign) * float(amp) * envelope * bump * bump_scales[bump_idx]
+
+            if clamp_enabled:
+                s = _clamp_along_perp_to_bbox(
+                    base=base,
+                    perp_x=perp_x,
+                    perp_y=perp_y,
+                    desired_s=desired_s,
+                    min_x=min_x,
+                    max_x=max_x,
+                    min_y=min_y,
+                    max_y=max_y,
+                )
+            else:
+                s = desired_s
+
+            pts.append(fc.Point(x=base.x + perp_x * s, y=base.y + perp_y * s, z=base.z))
+
+        return pts
+
+    steps.append(fc.ExtrusionGeometry(width=ew_eff, height=eh_eff))
+    steps.append(fc.Printer(print_speed=float(print_speed) / (float(frame_width_factor) * int(layer_ratio))))
+
+    # Start at SOUTH outer contact (print starts here).
+    south_outer = shell_points[idx_s]
+    steps.extend(fc.travel_to(fc.Point(x=float(south_outer.x), y=float(south_outer.y), z=float(z))))
+
+    # First: go from SOUTH outer to SOUTH inner (this is the "back" line for the first arm).
+    ux, uy, theta_s = _unit_from_centre(south_outer)
+    perp_x, perp_y = -uy, ux  # +perp points toward the next arm in our order
+    inner_s = _inner_point(theta_s)
+    bump3_scale_s = _diag_scale_for_bump3(theta=theta_s, start=fc.Point(x=float(south_outer.x), y=float(south_outer.y), z=float(z)), end=inner_s, perp_x=perp_x, perp_y=perp_y)
+    first_in = _three_arch_wave(
+        start=fc.Point(x=float(south_outer.x), y=float(south_outer.y), z=float(z)),
+        end=inner_s,
+        perp_x=perp_x,
+        perp_y=perp_y,
+        sign=-1.0,
+        bump3_scale=1.0,
+    )
+    steps.extend(first_in)
+
+    # Now do all arms with: inner->outer (toward next) + embed + outer->inner (opposite), with a quarter ring in between.
+    for arm_i, (_, idx_outer) in enumerate(arms):
+        outer = shell_points[idx_outer]
+        ux, uy, theta = _unit_from_centre(outer)
+        perp_x, perp_y = -uy, ux
+        inner = _inner_point(theta)
+
+        # Ensure we're at the correct inner point before heading out.
+        steps.append(fc.Point(x=float(inner.x), y=float(inner.y), z=float(z)))
+
+        bump3_scale = _diag_scale_for_bump3(theta=theta, start=inner, end=fc.Point(x=float(outer.x), y=float(outer.y), z=float(z)), perp_x=perp_x, perp_y=perp_y)
+        out_pts = _three_arch_wave(
+            start=inner,
+            end=fc.Point(x=float(outer.x), y=float(outer.y), z=float(z)),
+            perp_x=perp_x,
+            perp_y=perp_y,
+            sign=+1.0,
+            bump3_scale=bump3_scale,
+        )
+        steps.extend(out_pts)
+        _embed_from(idx_outer)
+
+        back_pts = _three_arch_wave(
+            start=fc.Point(x=float(outer.x), y=float(outer.y), z=float(z)),
+            end=inner,
+            perp_x=perp_x,
+            perp_y=perp_y,
+            sign=-1.0,
+            bump3_scale=1.0,
+        )
+        steps.extend(back_pts)
+
+        # Quarter turn on the inner circle to the next arm (skip after the last).
+        if arm_i < len(arms) - 1:
+            _, idx_next_outer = arms[arm_i + 1]
+            next_outer = shell_points[idx_next_outer]
+            _, _, next_theta = _unit_from_centre(next_outer)
+            arc = fc.arcXY(centre_z, inner_r, theta, pi / 2.0, int(segs_inner_quarter))
+            if arc:
+                steps.extend(arc)
