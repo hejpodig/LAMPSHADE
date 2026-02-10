@@ -7,6 +7,8 @@ from math import cos, exp, pi, sin, tau
 import fullcontrol as fc
 import lab.fullcontrol as fclab
 
+from streamlit_app.frame import add_nsew_wave_frame_connected_to_shell
+
 
 @dataclass(frozen=True)
 class LampshadeParams:
@@ -177,6 +179,8 @@ def build_lampshade_steps(params: LampshadeParams):
         if params.Twist_turns:
             shell_steps = fc.move_polar(shell_steps, centre_now, 0, twist_angle)
 
+        shell_steps_for_frame = shell_steps
+
         if target == "visualize" and params.viewer_point_stride > 1:
             eff_stride = int(params.viewer_point_stride)
             if params.Output != "Simple Plot" and params.zigzag_radius_factor > 0 and (params.zag_min > 0 or params.zag_max > 0):
@@ -188,9 +192,24 @@ def build_lampshade_steps(params: LampshadeParams):
             if len(shell_steps) > 0:
                 shell_steps.append(shell_steps[0])
 
-        steps.extend([fc.ExtrusionGeometry(width=EW, height=EH), fc.Printer(print_speed=print_speed)] + shell_steps)
+        if layer == 0 and frame_height > 0:
+            add_nsew_wave_frame_connected_to_shell(
+                steps=steps,
+                centre=centre_now,
+                z=z_now,
+                shell_points=shell_steps_for_frame,
+                frame_rad_inner=frame_rad_inner,
+                ew=EW,
+                eh=EH,
+                print_speed=print_speed,
+                frame_width_factor=float(params.frame_width_factor),
+                layer_ratio=int(params.layer_ratio),
+                amp=float(amp_1),
+                wave_count=3,
+                embed_segments=2,
+            )
 
-        # Frame intentionally disabled for now.
+        steps.extend([fc.ExtrusionGeometry(width=EW, height=EH), fc.Printer(print_speed=print_speed)] + shell_steps)
 
     steps.append(
         fc.PlotAnnotation(

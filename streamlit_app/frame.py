@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from math import cos, pi, tau
+from math import cos, pi, sin, tau
 
 from dataclasses import dataclass
 
@@ -397,3 +397,181 @@ def add_patterned_cardinal_frame(
     add_arm(endpoints.south)
     add_arm(endpoints.east)
     add_arm(endpoints.west)
+
+
+def add_nsew_wave_frame_connected_to_shell(
+    *,
+    steps: list,
+    centre: fc.Point,
+    z: float,
+    shell_points: list[fc.Point],
+    frame_rad_inner: float,
+    ew: float,
+    eh: float,
+    print_speed: float,
+    frame_width_factor: float = 2.5,
+    layer_ratio: int = 2,
+    segs_inner: int = 128,
+    segs_arm: int = 96,
+    amp: float = 12.0,
+    wave_count: int = 3,
+    embed_segments: int = 2,
+) -> None:
+    """Append a 4-contact (N/S/E/W) frame that is *connected* to the shell.
+
+    Key properties:
+    - Hole is always centered on `centre` (inner ring around `frame_rad_inner`).
+    - Contact points come from the actual `shell_points` at the same Z (furthest
+      north/south/east/west), so endpoints sit on the shell.
+    - Each arm uses exactly `wave_count` waves; shorter arms compress the waves.
+    - Adds a short "embed" along the shell path after the endpoint so the frame
+      deposits overlap with the shell path (reduces visible gaps).
+    """
+
+    if not shell_points:
+        return
+
+    centre_z = fc.Point(x=float(centre.x), y=float(centre.y), z=float(z))
+    n = len(shell_points)
+    if n < 4:
+        return
+
+    # Ensure frame inner radius accounts for half line width so the printed bead
+    # doesn't intrude into the hole.
+    inner_r = max(0.0, float(frame_rad_inner))
+    ew_eff = float(ew) * float(frame_width_factor)
+    eh_eff = float(eh) * int(layer_ratio)
+
+    # Coarse bounds (axis-aligned) for clamping wave offsets.
+    min_x = min(float(p.x) for p in shell_points) + 0.5 * ew_eff
+    max_x = max(float(p.x) for p in shell_points) - 0.5 * ew_eff
+    min_y = min(float(p.y) for p in shell_points) + 0.5 * ew_eff
+    max_y = max(float(p.y) for p in shell_points) - 0.5 * ew_eff
+
+    # If the shell is very small (or ew_eff is huge), fall back to unclamped.
+    clamp_enabled = (min_x <= max_x) and (min_y <= max_y)
+
+    def _argmax(points: list[fc.Point], key) -> int:
+        best_i = 0
+        best_v = key(points[0])
+        for i in range(1, len(points)):
+            v = key(points[i])
+            if v > best_v:
+                best_v = v
+                best_i = i
+        return best_i
+
+    def _argmin(points: list[fc.Point], key) -> int:
+        best_i = 0
+        best_v = key(points[0])
+        for i in range(1, len(points)):
+            v = key(points[i])
+            if v < best_v:
+                best_v = v
+                best_i = i
+        return best_i
+
+    idx_n = _argmax(shell_points, lambda p: float(p.y))
+    idx_s = _argmin(shell_points, lambda p: float(p.y))
+    idx_e = _argmax(shell_points, lambda p: float(p.x))
+    idx_w = _argmin(shell_points, lambda p: float(p.x))
+
+    targets: list[tuple[str, int]] = [
+        ("north", idx_n),
+        ("south", idx_s),
+        ("east", idx_e),
+        ("west", idx_w),
+    ]
+
+    steps.append(fc.ExtrusionGeometry(width=ew_eff, height=eh_eff))
+    steps.append(fc.Printer(print_speed=float(print_speed) / (float(frame_width_factor) * int(layer_ratio))))
+
+    # Inner ring.
+    ring = fc.arcXY(centre_z, inner_r, 0.0, tau, int(segs_inner))
+    if ring:
+        steps.extend(fc.travel_to(ring[0]))
+        steps.extend(ring)
+
+    # Pick start points on the ring (nearest by direction) to ensure connection.
+    def pick_ring_start(end: fc.Point) -> fc.Point:
+        if not ring:
+            # Idealized start on the true circle.
+            dx = float(end.x) - centre_z.x
+            dy = float(end.y) - centre_z.y
+            d = (dx * dx + dy * dy) ** 0.5
+            if d <= 1e-9:
+                return centre_z
+            return fc.Point(x=centre_z.x + dx / d * inner_r, y=centre_z.y + dy / d * inner_r, z=centre_z.z)
+
+        dx = float(end.x) - centre_z.x
+        dy = float(end.y) - centre_z.y
+        d = (dx * dx + dy * dy) ** 0.5
+        if d <= 1e-9:
+            return ring[0]
+        ux, uy = dx / d, dy / d
+        best = ring[0]
+        best_dot = (float(best.x) - centre_z.x) * ux + (float(best.y) - centre_z.y) * uy
+        for p in ring[1:]:
+            dot = (float(p.x) - centre_z.x) * ux + (float(p.y) - centre_z.y) * uy
+            if dot > best_dot:
+                best_dot = dot
+                best = p
+        return best
+
+    def add_arm_to_shell(idx: int) -> None:
+        end_raw = shell_points[idx]
+        end = fc.Point(x=float(end_raw.x), y=float(end_raw.y), z=float(z))
+
+        start = pick_ring_start(end)
+        dx = float(end.x) - float(start.x)
+        dy = float(end.y) - float(start.y)
+        d = (dx * dx + dy * dy) ** 0.5
+        if d <= 1e-9:
+            return
+
+        ux = dx / d
+        uy = dy / d
+        perp_x = -uy
+        perp_y = ux
+
+        arm_pts: list[fc.Point] = []
+        wave_n = max(1, int(wave_count))
+        for i in range(int(segs_arm) + 1):
+            t = i / float(segs_arm)
+            base_x = float(start.x) + dx * t
+            base_y = float(start.y) + dy * t
+
+            envelope = sin(pi * t)  # 0 at ends.
+            desired_s = float(amp) * envelope * sin(wave_n * 2.0 * pi * t)
+
+            if clamp_enabled:
+                s = _clamp_along_perp_to_bbox(
+                    base=fc.Point(x=base_x, y=base_y, z=centre_z.z),
+                    perp_x=perp_x,
+                    perp_y=perp_y,
+                    desired_s=desired_s,
+                    min_x=min_x,
+                    max_x=max_x,
+                    min_y=min_y,
+                    max_y=max_y,
+                )
+            else:
+                s = desired_s
+
+            arm_pts.append(fc.Point(x=base_x + perp_x * s, y=base_y + perp_y * s, z=centre_z.z))
+
+        if not arm_pts:
+            return
+
+        steps.extend(fc.travel_to(arm_pts[0]))
+        steps.extend(arm_pts)
+
+        # Embed into the shell path for stronger merge.
+        embed_n = max(0, int(embed_segments))
+        for k in range(1, embed_n + 1):
+            p = shell_points[(idx + k) % n]
+            steps.append(fc.Point(x=float(p.x), y=float(p.y), z=float(z)))
+
+    # Print all 4 arms.
+    for _, idx in targets:
+        add_arm_to_shell(idx)
