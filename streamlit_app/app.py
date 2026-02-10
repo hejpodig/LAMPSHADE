@@ -691,6 +691,15 @@ def _build_params_from_ui() -> LampshadeParams:
             "topradius.png",
             "Zigzag.png",
         ]
+        image_descriptions = {
+            "Frameheight.png": "**Inner frame height**\n\nControls the height of the printed inner frame/ring at the base. Set to 0 to disable the inner frame.",
+            "Framehole.png": "**Frame hole diameter**\n\nSets the diameter of the central hole in the inner frame/ring. This also constrains the minimum bottom radius so the frame fits.",
+            "profile radius.png": "**Profile radii**\n\nShows how bottom / middle / top radii define the overall silhouette from bottom to top, with the middle radius occurring at the chosen height percentage.",
+            "startiplength.png": "**Star tip length**\n\nControls how far each star point extends outward. Higher values make sharper, more pronounced tips.",
+            "startips.png": "**Number of star tips**\n\nControls how many star points are around the perimeter. Set to 0 for a round lampshade.",
+            "topradius.png": "**Top radius**\n\nControls the size of the opening at the top. Larger values widen the lampshade at the top.",
+            "Zigzag.png": "**Zigzags**\n\nAdds a periodic in-and-out ripple around the perimeter. Depth controls how strong it is; frequency controls how many zigzags occur around the circumference.",
+        }
         images = [(name, images_dir / name) for name in image_names if (images_dir / name).exists()]
         if images:
             image_data_uris = [
@@ -710,12 +719,9 @@ def _build_params_from_ui() -> LampshadeParams:
                 @st.dialog(image_name)
                 def _show_image_dialog() -> None:
                     st.image(str(image_path), use_container_width=True)
-                    st.text_area(
-                        "Description",
-                        key=f"_img_note::{image_name}",
-                        height=140,
-                        placeholder="Add a description for this image...",
-                    )
+                    desc = image_descriptions.get(image_name)
+                    if desc:
+                        st.markdown(desc)
 
                 _show_image_dialog()
     elif result["type"] == "gcode":
