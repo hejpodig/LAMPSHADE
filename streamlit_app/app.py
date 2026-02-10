@@ -296,83 +296,7 @@ def _build_params_from_ui() -> LampshadeParams:
     _ensure_defaults(defaults)
 
     with st.sidebar:
-        with st.expander("Presets", expanded=False):
-            preset_name = st.text_input(
-                "Preset file name",
-                value=str(st.session_state.get("Design_name", "fc_lampshade")),
-                help="Used only for the downloaded preset filename.",
-                key="_preset_name",
-            )
-            preset_json = json.dumps(_preset_payload(), indent=2, sort_keys=True)
-            st.download_button(
-                "Download preset (.json)",
-                data=preset_json,
-                file_name=f"{preset_name or 'lampshade'}_preset.json",
-                mime="application/json",
-                use_container_width=True,
-            )
-            uploaded = st.file_uploader("Upload preset (.json)", type=["json"], key="_preset_upload")
-            if uploaded is not None:
-                try:
-                    raw = uploaded.getvalue()
-                    token = hashlib.sha256(raw).hexdigest()
-                    if st.session_state.get("_preset_upload_token") != token:
-                        loaded = json.loads(raw.decode("utf-8"))
-                        _apply_preset(loaded)
-
-                        # Force a regen so the preview matches the newly loaded settings.
-                        st.session_state["last_params"] = None
-                        st.session_state["last_result"] = None
-
-                        st.session_state["_preset_upload_token"] = token
-                        st.success("Preset loaded")
-                except Exception as e:
-                    st.error(f"Invalid preset: {e}")
-            else:
-                st.session_state.pop("_preset_upload_token", None)
-
         generate = st.button("Generate / Update", type="primary", use_container_width=True)
-
-        with st.expander("Controls", expanded=True):
-            output = st.selectbox(
-                "Output mode",
-                ["Simple Plot", "Detailed Plot", "GCode"],
-                help="Choose whether to preview the design or download GCode.",
-                key="Output",
-            )
-            viewer_mode = st.selectbox(
-                "Viewer detail",
-                ["Fast viewer", "Normal viewer", "High detail"],
-                help="Fast viewer down-samples the preview for speed (does not change the exported GCode).",
-                key="Viewer",
-            )
-            annotations = st.checkbox("Show annotations", help="Show/hide notes in the preview.", key="Annotations")
-            viewer_point_stride, viewer_layer_stride = _viewer_presets(viewer_mode)
-
-        st.divider()
-        with st.expander("Printer", expanded=True):
-            printer_name = st.selectbox(
-                "Printer profile",
-                ["generic", "ultimaker2plus", "prusa_i3", "ender_3", "cr_10", "bambulab_x1", "toolchanger_T"],
-                help="Affects startup/end GCode and conventions.",
-                key="Printer_name",
-            )
-            nozzle_temp = st.number_input(
-                "Nozzle temperature (°C)", min_value=0, max_value=400, step=1, key="Nozzle_temp"
-            )
-            bed_temp = st.number_input("Bed temperature (°C)", min_value=0, max_value=150, step=1, key="Bed_temp")
-            fan_percent = st.number_input("Part cooling fan (%)", min_value=0, max_value=100, step=1, key="Fan_percent")
-            material_flow_percent = st.number_input(
-                "Flow multiplier (%)", min_value=0, max_value=200, step=1, key="Material_flow_percent"
-            )
-            print_speed_percent = st.number_input(
-                "Speed multiplier (%)", min_value=10, max_value=400, step=5, key="Print_speed_percent"
-            )
-            design_name = st.text_input(
-                "Output name",
-                help="Used as the downloaded GCode filename prefix.",
-                key="Design_name",
-            )
 
         with st.expander("Geometry", expanded=True):
             height = st.slider(
@@ -590,6 +514,82 @@ def _build_params_from_ui() -> LampshadeParams:
                 help="Scales the first layer Z (lower = more squish).",
                 key="initial_z_factor",
             )
+
+        with st.expander("Controls", expanded=True):
+            output = st.selectbox(
+                "Output mode",
+                ["Simple Plot", "Detailed Plot", "GCode"],
+                help="Choose whether to preview the design or download GCode.",
+                key="Output",
+            )
+            viewer_mode = st.selectbox(
+                "Viewer detail",
+                ["Fast viewer", "Normal viewer", "High detail"],
+                help="Fast viewer down-samples the preview for speed (does not change the exported GCode).",
+                key="Viewer",
+            )
+            annotations = st.checkbox("Show annotations", help="Show/hide notes in the preview.", key="Annotations")
+            viewer_point_stride, viewer_layer_stride = _viewer_presets(viewer_mode)
+
+        with st.expander("Printer", expanded=True):
+            printer_name = st.selectbox(
+                "Printer profile",
+                ["generic", "ultimaker2plus", "prusa_i3", "ender_3", "cr_10", "bambulab_x1", "toolchanger_T"],
+                help="Affects startup/end GCode and conventions.",
+                key="Printer_name",
+            )
+            nozzle_temp = st.number_input(
+                "Nozzle temperature (°C)", min_value=0, max_value=400, step=1, key="Nozzle_temp"
+            )
+            bed_temp = st.number_input("Bed temperature (°C)", min_value=0, max_value=150, step=1, key="Bed_temp")
+            fan_percent = st.number_input("Part cooling fan (%)", min_value=0, max_value=100, step=1, key="Fan_percent")
+            material_flow_percent = st.number_input(
+                "Flow multiplier (%)", min_value=0, max_value=200, step=1, key="Material_flow_percent"
+            )
+            print_speed_percent = st.number_input(
+                "Speed multiplier (%)", min_value=10, max_value=400, step=5, key="Print_speed_percent"
+            )
+            design_name = st.text_input(
+                "Output name",
+                help="Used as the downloaded GCode filename prefix.",
+                key="Design_name",
+            )
+
+        st.divider()
+        with st.expander("Presets", expanded=False):
+            preset_name = st.text_input(
+                "Preset file name",
+                value=str(st.session_state.get("Design_name", "fc_lampshade")),
+                help="Used only for the downloaded preset filename.",
+                key="_preset_name",
+            )
+            preset_json = json.dumps(_preset_payload(), indent=2, sort_keys=True)
+            st.download_button(
+                "Download preset (.json)",
+                data=preset_json,
+                file_name=f"{preset_name or 'lampshade'}_preset.json",
+                mime="application/json",
+                use_container_width=True,
+            )
+            uploaded = st.file_uploader("Upload preset (.json)", type=["json"], key="_preset_upload")
+            if uploaded is not None:
+                try:
+                    raw = uploaded.getvalue()
+                    token = hashlib.sha256(raw).hexdigest()
+                    if st.session_state.get("_preset_upload_token") != token:
+                        loaded = json.loads(raw.decode("utf-8"))
+                        _apply_preset(loaded)
+
+                        # Force a regen so the preview matches the newly loaded settings.
+                        st.session_state["last_params"] = None
+                        st.session_state["last_result"] = None
+
+                        st.session_state["_preset_upload_token"] = token
+                        st.success("Preset loaded")
+                except Exception as e:
+                    st.error(f"Invalid preset: {e}")
+            else:
+                st.session_state.pop("_preset_upload_token", None)
 
     st.markdown("### Preview")
 
