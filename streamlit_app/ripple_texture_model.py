@@ -5,8 +5,6 @@ from math import cos, sin, tau
 
 import fullcontrol as fc
 
-from frame import add_legacy_pattern_frame_clamped
-
 
 @dataclass
 class RippleTextureParams:
@@ -72,15 +70,6 @@ def build_ripple_texture_steps(params: RippleTextureParams) -> tuple[list, fc.Pl
     steps: list = []
     steps.append(fc.Printer(print_speed=print_speed / 2.0))
 
-    # Add the centered patterned 4-arm base frame.
-    # For each frame layer, compute the shape's extents on that same Z height
-    # and clamp the frame to those bounds so it never protrudes.
-    frame_hole_diameter = 30.0
-    frame_height = 3.0
-    frame_width_factor = 2.5
-    frame_rad_inner = (frame_hole_diameter / 2.0) + (ew / 2.0)
-    frame_margin = (ew * frame_width_factor) / 2.0
-
     inner_rad = float(params.inner_rad)
     rip_depth = float(params.rip_depth)
     tip_length = float(params.tip_length)
@@ -88,78 +77,6 @@ def build_ripple_texture_steps(params: RippleTextureParams) -> tuple[list, fc.Pl
     shape_factor = float(params.shape_factor)
     skew_percent = float(params.skew_percent)
     star_tips = int(params.star_tips)
-    a_scale = 1.0 + (skew_percent / 100.0) / max(layers, 1)
-
-    if frame_height > 0:
-        z_frame = 0.0
-        # Sample one revolution at this Z to find the true extrema points.
-        min_x = max_x = 0.0
-        min_y = max_y = 0.0
-        x_at_max_y = 0.0
-        x_at_min_y = 0.0
-        y_at_max_x = 0.0
-        y_at_min_x = 0.0
-        found_first = False
-
-        bulge_wave = 0.0
-
-        for t in range(int(layer_segs)):
-            t_val = t / float(layer_segs)
-            a_now = (t_val * tau * a_scale) - (tau / 4.0)
-            ripple_wave = rip_depth * (0.5 + (0.5 * cos((ripples_per_layer + 0.5) * (t_val * tau))))
-            star_wave = tip_length * (0.5 - 0.5 * cos(star_tips * (t_val * tau))) ** shape_factor if star_tips else 0.0
-            r_now = inner_rad + ripple_wave + star_wave + bulge_wave
-            x = r_now * cos(a_now)
-            y = r_now * sin(a_now)
-
-            if not found_first:
-                min_x = max_x = x
-                min_y = max_y = y
-                x_at_max_y = x_at_min_y = x
-                y_at_max_x = y_at_min_x = y
-                found_first = True
-            else:
-                if x > max_x:
-                    max_x = x
-                    y_at_max_x = y
-                if x < min_x:
-                    min_x = x
-                    y_at_min_x = y
-                if y > max_y:
-                    max_y = y
-                    x_at_max_y = x
-                if y < min_y:
-                    min_y = y
-                    x_at_min_y = x
-
-        bbox_min_x = float(min_x) + frame_margin
-        bbox_max_x = float(max_x) - frame_margin
-        bbox_min_y = float(min_y) + frame_margin
-        bbox_max_y = float(max_y) - frame_margin
-
-        extent_east = float(bbox_max_x)
-        extent_west = float(-bbox_min_x)
-        extent_north = float(bbox_max_y)
-        extent_south = float(-bbox_min_y)
-        frame_rad_max_layer = max(extent_east, extent_west, extent_north, extent_south)
-
-        add_legacy_pattern_frame_clamped(
-            steps=steps,
-            centre=fc.Point(x=0, y=0, z=0),
-            z=z_frame,
-            frame_rad_inner=float(frame_rad_inner),
-            frame_rad_max=float(frame_rad_max_layer),
-            bbox_min_x=float(bbox_min_x),
-            bbox_max_x=float(bbox_max_x),
-            bbox_min_y=float(bbox_min_y),
-            bbox_max_y=float(bbox_max_y),
-            ew=float(ew),
-            eh=float(eh),
-            print_speed=float(print_speed),
-            frame_width_factor=float(frame_width_factor),
-            contact_points=4,
-            start_angle=float(-tau / 4.0),
-        )
 
     centre_now = fc.Point(x=0, y=0, z=0)
     first_layer_E_factor = float(params.first_layer_E_factor)

@@ -7,8 +7,6 @@ from math import cos, exp, pi, sin, tau
 import fullcontrol as fc
 import lab.fullcontrol as fclab
 
-from frame import add_legacy_pattern_frame_clamped
-
 
 @dataclass(frozen=True)
 class LampshadeParams:
@@ -192,45 +190,7 @@ def build_lampshade_steps(params: LampshadeParams):
 
         steps.extend([fc.ExtrusionGeometry(width=EW, height=EH), fc.Printer(print_speed=print_speed)] + shell_steps)
 
-        if layer == 0 and frame_height > 0:
-            min_x = min(p.x for p in shell_steps)
-            max_x = max(p.x for p in shell_steps)
-            min_y = min(p.y for p in shell_steps)
-            max_y = max(p.y for p in shell_steps)
-
-            frame_margin = (float(EW) * float(params.frame_width_factor)) / 2.0
-            bbox_min_x = float(min_x) + frame_margin
-            bbox_max_x = float(max_x) - frame_margin
-            bbox_min_y = float(min_y) + frame_margin
-            bbox_max_y = float(max_y) - frame_margin
-
-            extent_east = float(bbox_max_x - centre_now.x)
-            extent_west = float(centre_now.x - bbox_min_x)
-            extent_north = float(bbox_max_y - centre_now.y)
-            extent_south = float(centre_now.y - bbox_min_y)
-            frame_rad_max_layer = max(extent_east, extent_west, extent_north, extent_south)
-
-            add_legacy_pattern_frame_clamped(
-                steps=steps,
-                centre=centre_now,
-                z=z_now,
-                frame_rad_inner=float(frame_rad_inner),
-                frame_rad_max=float(frame_rad_max_layer),
-                bbox_min_x=float(bbox_min_x),
-                bbox_max_x=float(bbox_max_x),
-                bbox_min_y=float(bbox_min_y),
-                bbox_max_y=float(bbox_max_y),
-                ew=float(EW),
-                eh=float(EH),
-                print_speed=float(print_speed),
-                contact_points=4,
-                amp=float(amp_1),
-                frame_width_factor=float(params.frame_width_factor),
-                frame_line_spacing_ratio=float(params.frame_line_spacing_ratio),
-                layer_ratio=int(params.layer_ratio),
-                segs_frame=int(params.segs_frame),
-                start_angle=float(params.start_angle),
-            )
+        # Frame intentionally disabled for now.
 
     steps.append(
         fc.PlotAnnotation(
