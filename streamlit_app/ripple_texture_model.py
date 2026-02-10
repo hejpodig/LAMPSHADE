@@ -158,6 +158,8 @@ def build_ripple_texture_steps(params: RippleTextureParams) -> tuple[list, fc.Pl
             eh=float(eh),
             print_speed=float(print_speed),
             frame_width_factor=float(frame_width_factor),
+            contact_points=4,
+            start_angle=float(-tau / 4.0),
         )
 
     centre_now = fc.Point(x=0, y=0, z=0)

@@ -109,6 +109,8 @@ def build_blob_printing_steps(params: BlobPrintingParams) -> tuple[list, fc.Plot
             eh=float(blob_height),
             print_speed=100.0,
             frame_width_factor=float(frame_width_factor),
+            contact_points=4,
+            start_angle=float(0.75 * tau),
         )
 
     # primer line

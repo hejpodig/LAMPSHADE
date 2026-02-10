@@ -230,6 +230,7 @@ def build_lampshade_steps(params: LampshadeParams):
                 frame_line_spacing_ratio=float(params.frame_line_spacing_ratio),
                 layer_ratio=int(params.layer_ratio),
                 segs_frame=int(params.segs_frame),
+                start_angle=float(params.start_angle),
             )
 
     steps.append(
