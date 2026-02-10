@@ -375,7 +375,7 @@ def _build_params_from_ui() -> LampshadeParams | RippleTextureParams:
         )
 
     with st.sidebar:
-        generate = st.button("Generate / Update", type="primary", use_container_width=True)
+        generate = st.button("Generate / Update", type="primary", width="stretch")
 
         design = st.selectbox(
             "Design",
@@ -846,7 +846,7 @@ def _build_params_from_ui() -> LampshadeParams | RippleTextureParams:
                     data=preset_json,
                     file_name=f"{preset_name or 'lampshade'}_preset.json",
                     mime="application/json",
-                    use_container_width=True,
+                    width="stretch",
                 )
                 uploaded = st.file_uploader("Upload preset (.json)", type=["json"], key="_preset_upload")
                 if uploaded is not None:
@@ -1021,7 +1021,7 @@ def _build_params_from_ui() -> LampshadeParams | RippleTextureParams:
     elif result["type"] == "error":
         st.error(result["error"])
     elif result["type"] == "plot":
-        st.plotly_chart(result["fig"], use_container_width=True)
+        st.plotly_chart(result["fig"], width="stretch")
         if design == "Lampshade":
             st.divider()
 
@@ -1080,7 +1080,7 @@ def _build_params_from_ui() -> LampshadeParams | RippleTextureParams:
 
                     @st.dialog(dialog_title)
                     def _show_image_dialog() -> None:
-                        st.image(str(image_path), use_container_width=True)
+                        st.image(str(image_path), width="stretch")
                         desc = image_descriptions.get(image_name)
                         if desc:
                             st.markdown(desc)
