@@ -312,13 +312,8 @@ def _build_params_from_ui() -> LampshadeParams | RippleTextureParams:
         "RT_bulge": 2.0,
         "RT_nozzle_dia": 0.4,
         "RT_ripples_per_layer": 50,
-        "RT_rip_depth": 1.0,
+        "RT_rip_depth": 0.0,
         "RT_shape_factor": 1.5,
-        "RT_ripple_segs": 2,
-        "RT_first_layer_E_factor": 0.4,
-        "RT_centre_x": 50,
-        "RT_centre_y": 50,
-        "RT_print_speed": 500,
     }
     _ensure_defaults(defaults)
 
@@ -562,6 +557,14 @@ def _build_params_from_ui() -> LampshadeParams | RippleTextureParams:
                 )
         else:
             with st.expander("Body", expanded=True):
+                rt_inner_rad = st.number_input(
+                    "Inner radius (mm)",
+                    min_value=10.0,
+                    max_value=30.0,
+                    step=0.5,
+                    help="Base radius that other features morph outwards from.",
+                    key="RT_inner_rad",
+                )
                 rt_height = st.slider(
                     "Height (mm)",
                     min_value=20,
@@ -570,44 +573,8 @@ def _build_params_from_ui() -> LampshadeParams | RippleTextureParams:
                     help="Height of the part.",
                     key="RT_height",
                 )
-                rt_inner_rad = st.number_input(
-                    "Inner radius (mm)",
-                    min_value=5.0,
-                    max_value=50.0,
-                    step=0.5,
-                    help="Base radius that other features morph outwards from.",
-                    key="RT_inner_rad",
-                )
 
             with st.expander("Shape", expanded=True):
-                rt_star_tips = st.slider(
-                    "Star tips",
-                    min_value=0,
-                    max_value=10,
-                    step=1,
-                    key="RT_star_tips",
-                )
-                rt_tip_length = st.slider(
-                    "Star tip length (mm)",
-                    min_value=-20.0,
-                    max_value=20.0,
-                    step=0.5,
-                    key="RT_tip_length",
-                )
-                rt_shape_factor = st.slider(
-                    "Star tip pointiness",
-                    min_value=0.25,
-                    max_value=5.0,
-                    step=0.05,
-                    key="RT_shape_factor",
-                )
-                rt_bulge = st.slider(
-                    "Bulge (mm)",
-                    min_value=-20.0,
-                    max_value=20.0,
-                    step=0.5,
-                    key="RT_bulge",
-                )
                 rt_skew_percent = st.slider(
                     "Twist (%)",
                     min_value=-100.0,
@@ -616,67 +583,63 @@ def _build_params_from_ui() -> LampshadeParams | RippleTextureParams:
                     help="100% is one full rotation anti-clockwise over the height.",
                     key="RT_skew_percent",
                 )
-
-            with st.expander("Ripples", expanded=True):
-                rt_ripples_per_layer = st.slider(
-                    "Ripples per layer",
-                    min_value=20,
-                    max_value=100,
-                    step=1,
-                    key="RT_ripples_per_layer",
-                )
-                rt_rip_depth = st.slider(
-                    "Ripple depth (mm)",
-                    min_value=0.0,
-                    max_value=5.0,
-                    step=0.1,
-                    key="RT_rip_depth",
-                )
-                rt_ripple_segs = st.slider(
-                    "Ripple smoothness",
-                    min_value=2,
+                rt_star_tips = st.slider(
+                    "Star tips",
+                    min_value=0,
                     max_value=10,
                     step=1,
-                    help="2 = zig-zag ripple; higher values are smoother but slower to generate.",
-                    key="RT_ripple_segs",
+                    help="Number of star points around the perimeter.",
+                    key="RT_star_tips",
+                )
+                rt_tip_length = st.slider(
+                    "Star tip length (mm)",
+                    min_value=-20.0,
+                    max_value=20.0,
+                    step=0.5,
+                    help="How far each star point extends outward.",
+                    key="RT_tip_length",
+                )
+                rt_bulge = st.slider(
+                    "Bulge (mm)",
+                    min_value=-20.0,
+                    max_value=20.0,
+                    step=0.5,
+                    help="Adds a smooth bulge over the height.",
+                    key="RT_bulge",
                 )
 
             with st.expander("Advanced", expanded=False):
                 rt_nozzle_dia = st.number_input(
-                    "Nozzle diameter (mm)",
+                    "Nozzle Diameter (mm)",
                     min_value=0.3,
                     max_value=1.2,
                     step=0.05,
+                    help="Nozzle diameter used to derive layer height and line width.",
                     key="RT_nozzle_dia",
                 )
-                rt_first_layer_E_factor = st.slider(
-                    "First-layer extrusion ramp",
+                rt_ripples_per_layer = st.slider(
+                    "Ripples Per Layer",
+                    min_value=20,
+                    max_value=100,
+                    step=1,
+                    help="How many ripples occur around one layer.",
+                    key="RT_ripples_per_layer",
+                )
+                rt_rip_depth = st.slider(
+                    "Ripple Depth (mm)",
                     min_value=0.0,
-                    max_value=1.0,
+                    max_value=5.0,
+                    step=0.1,
+                    help="Amplitude of the ripple effect.",
+                    key="RT_rip_depth",
+                )
+                rt_shape_factor = st.slider(
+                    "Star Tip Pointiness",
+                    min_value=0.25,
+                    max_value=5.0,
                     step=0.05,
-                    help="0.4 adds ~40% extrusion by the end of the first layer (vase mode).",
-                    key="RT_first_layer_E_factor",
-                )
-                rt_print_speed = st.number_input(
-                    "Print speed (mm/min)",
-                    min_value=10,
-                    max_value=5000,
-                    step=10,
-                    key="RT_print_speed",
-                )
-                rt_centre_x = st.number_input(
-                    "Centre X (mm)",
-                    min_value=0,
-                    max_value=500,
-                    step=1,
-                    key="RT_centre_x",
-                )
-                rt_centre_y = st.number_input(
-                    "Centre Y (mm)",
-                    min_value=0,
-                    max_value=500,
-                    step=1,
-                    key="RT_centre_y",
+                    help="Higher values make tips sharper/more pointy.",
+                    key="RT_shape_factor",
                 )
 
         with st.expander("Controls", expanded=True):
@@ -810,7 +773,7 @@ def _build_params_from_ui() -> LampshadeParams | RippleTextureParams:
             Printer_name=printer_name,
             Nozzle_temp=int(nozzle_temp),
             Bed_temp=int(bed_temp),
-            print_speed=float(st.session_state.get("RT_print_speed", 500)),
+            print_speed=500.0,
             Fan_percent=int(fan_percent),
             Material_flow_percent=int(material_flow_percent),
             Print_speed_percent=int(print_speed_percent),
@@ -823,12 +786,12 @@ def _build_params_from_ui() -> LampshadeParams | RippleTextureParams:
             bulge=float(st.session_state.get("RT_bulge", 2.0)),
             nozzle_dia=float(st.session_state.get("RT_nozzle_dia", 0.4)),
             ripples_per_layer=int(st.session_state.get("RT_ripples_per_layer", 50)),
-            rip_depth=float(st.session_state.get("RT_rip_depth", 1.0)),
+            rip_depth=float(st.session_state.get("RT_rip_depth", 0.0)),
             shape_factor=float(st.session_state.get("RT_shape_factor", 1.5)),
-            ripple_segs=int(st.session_state.get("RT_ripple_segs", 2)),
-            first_layer_E_factor=float(st.session_state.get("RT_first_layer_E_factor", 0.4)),
-            centre_x=float(st.session_state.get("RT_centre_x", 50)),
-            centre_y=float(st.session_state.get("RT_centre_y", 50)),
+            ripple_segs=2,
+            first_layer_E_factor=0.4,
+            centre_x=50.0,
+            centre_y=50.0,
             viewer_point_stride=int(viewer_point_stride),
             viewer_layer_stride=int(viewer_layer_stride),
         )
