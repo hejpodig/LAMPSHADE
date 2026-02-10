@@ -213,12 +213,6 @@ def build_lampshade_steps(params: LampshadeParams):
             label="Avoid larger overhangs than default design - ripple texture exacerbates overhangs",
         )
     )
-    steps.append(
-        fc.PlotAnnotation(
-            point=fc.Point(x=centre_xy, y=centre_xy, z=height + 10),
-            label="Try doubling speed - you may need to increase nozzle temperature",
-        )
-    )
 
     gcode_controls = fc.GcodeControls(
         printer_name=params.Printer_name,
