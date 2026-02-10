@@ -7,7 +7,12 @@ from math import cos, exp, pi, sin, tau
 import fullcontrol as fc
 import lab.fullcontrol as fclab
 
-from streamlit_app.frame import add_nsew_wave_frame_connected_to_shell
+try:
+    # When imported as a package module (e.g. local dev).
+    from streamlit_app.frame import add_nsew_wave_frame_connected_to_shell
+except ModuleNotFoundError:
+    # When Streamlit runs from within streamlit_app/ and imports models as top-level modules.
+    from frame import add_nsew_wave_frame_connected_to_shell
 
 
 @dataclass(frozen=True)
