@@ -269,6 +269,9 @@ def _build_params_from_ui() -> LampshadeParams | RippleTextureParams:
     BUILD_VOL_Z = 250
     BUILD_MAX_RADIUS = BUILD_VOL_XY / 2
 
+    def _clamp(num: float, lo: float, hi: float) -> float:
+        return max(lo, min(hi, float(num)))
+
     defaults = {
         "Design": "Lampshade",
         "Output": "Detailed Plot",
@@ -329,6 +332,33 @@ def _build_params_from_ui() -> LampshadeParams | RippleTextureParams:
         "BP_extrusion_speed": 100.0,
     }
     _ensure_defaults(defaults)
+
+    # Clamp ripple settings to widget bounds + build volume so UI and generation stay in sync.
+    # (When a widget has a key but no explicit `value=`, Streamlit can reset to its min on refresh.)
+    st.session_state["RT_inner_rad"] = _clamp(st.session_state.get("RT_inner_rad", 75.0), 10.0, float(BUILD_MAX_RADIUS))
+    st.session_state["RT_height"] = int(_clamp(st.session_state.get("RT_height", 150), 20.0, float(BUILD_VOL_Z)))
+    st.session_state["RT_skew_percent"] = _clamp(st.session_state.get("RT_skew_percent", 10.0), -100.0, 100.0)
+    st.session_state["RT_star_tips"] = int(_clamp(st.session_state.get("RT_star_tips", 4), 0.0, 10.0))
+    st.session_state["RT_tip_length"] = _clamp(st.session_state.get("RT_tip_length", 5.0), -20.0, 20.0)
+    st.session_state["RT_bulge"] = _clamp(st.session_state.get("RT_bulge", 2.0), -20.0, 20.0)
+    st.session_state["RT_nozzle_dia"] = _clamp(st.session_state.get("RT_nozzle_dia", 0.4), 0.3, 1.2)
+    st.session_state["RT_ripples_per_layer"] = int(_clamp(st.session_state.get("RT_ripples_per_layer", 50), 20.0, 100.0))
+    st.session_state["RT_rip_depth"] = _clamp(st.session_state.get("RT_rip_depth", 1.0), 0.0, 5.0)
+    st.session_state["RT_shape_factor"] = _clamp(st.session_state.get("RT_shape_factor", 1.5), 0.25, 5.0)
+
+    # Keep ripple footprint inside 250x250 by constraining inner radius based on a conservative outer radius estimate.
+    max_ripple_outer = (
+        float(st.session_state["RT_inner_rad"])
+        + max(0.0, float(st.session_state["RT_tip_length"]))
+        + max(0.0, float(st.session_state["RT_bulge"]))
+        + float(st.session_state["RT_rip_depth"])
+    )
+    if max_ripple_outer > float(BUILD_MAX_RADIUS):
+        st.session_state["RT_inner_rad"] = _clamp(
+            float(st.session_state["RT_inner_rad"]) - (max_ripple_outer - float(BUILD_MAX_RADIUS)),
+            10.0,
+            float(BUILD_MAX_RADIUS),
+        )
 
     with st.sidebar:
         generate = st.button("Generate / Update", type="primary", use_container_width=True)
@@ -587,6 +617,7 @@ def _build_params_from_ui() -> LampshadeParams | RippleTextureParams:
                     min_value=10.0,
                     max_value=float(BUILD_MAX_RADIUS),
                     step=0.5,
+                    value=float(st.session_state.get("RT_inner_rad", 75.0)),
                     help="Base radius that other features morph outwards from.",
                     key="RT_inner_rad",
                 )
@@ -595,6 +626,7 @@ def _build_params_from_ui() -> LampshadeParams | RippleTextureParams:
                     min_value=20,
                     max_value=int(BUILD_VOL_Z),
                     step=5,
+                    value=int(st.session_state.get("RT_height", 150)),
                     help="Height of the part.",
                     key="RT_height",
                 )
@@ -605,6 +637,7 @@ def _build_params_from_ui() -> LampshadeParams | RippleTextureParams:
                     min_value=-100.0,
                     max_value=100.0,
                     step=1.0,
+                    value=float(st.session_state.get("RT_skew_percent", 10.0)),
                     help="100% is one full rotation anti-clockwise over the height.",
                     key="RT_skew_percent",
                 )
@@ -613,6 +646,7 @@ def _build_params_from_ui() -> LampshadeParams | RippleTextureParams:
                     min_value=0,
                     max_value=10,
                     step=1,
+                    value=int(st.session_state.get("RT_star_tips", 4)),
                     help="Number of star points around the perimeter.",
                     key="RT_star_tips",
                 )
@@ -621,6 +655,7 @@ def _build_params_from_ui() -> LampshadeParams | RippleTextureParams:
                     min_value=-20.0,
                     max_value=20.0,
                     step=0.5,
+                    value=float(st.session_state.get("RT_tip_length", 5.0)),
                     help="How far each star point extends outward.",
                     key="RT_tip_length",
                 )
@@ -629,6 +664,7 @@ def _build_params_from_ui() -> LampshadeParams | RippleTextureParams:
                     min_value=-20.0,
                     max_value=20.0,
                     step=0.5,
+                    value=float(st.session_state.get("RT_bulge", 2.0)),
                     help="Adds a smooth bulge over the height.",
                     key="RT_bulge",
                 )
@@ -639,6 +675,7 @@ def _build_params_from_ui() -> LampshadeParams | RippleTextureParams:
                     min_value=0.3,
                     max_value=1.2,
                     step=0.05,
+                    value=float(st.session_state.get("RT_nozzle_dia", 0.4)),
                     help="Nozzle diameter used to derive layer height and line width.",
                     key="RT_nozzle_dia",
                 )
@@ -647,6 +684,7 @@ def _build_params_from_ui() -> LampshadeParams | RippleTextureParams:
                     min_value=20,
                     max_value=100,
                     step=1,
+                    value=int(st.session_state.get("RT_ripples_per_layer", 50)),
                     help="How many ripples occur around one layer.",
                     key="RT_ripples_per_layer",
                 )
@@ -655,6 +693,7 @@ def _build_params_from_ui() -> LampshadeParams | RippleTextureParams:
                     min_value=0.0,
                     max_value=5.0,
                     step=0.1,
+                    value=float(st.session_state.get("RT_rip_depth", 1.0)),
                     help="Amplitude of the ripple effect.",
                     key="RT_rip_depth",
                 )
@@ -663,6 +702,7 @@ def _build_params_from_ui() -> LampshadeParams | RippleTextureParams:
                     min_value=0.25,
                     max_value=5.0,
                     step=0.05,
+                    value=float(st.session_state.get("RT_shape_factor", 1.5)),
                     help="Higher values make tips sharper/more pointy.",
                     key="RT_shape_factor",
                 )
