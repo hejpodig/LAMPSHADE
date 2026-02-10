@@ -25,6 +25,7 @@ import fullcontrol as fc
 # Import sibling modules directly so it works both locally and on Streamlit Cloud.
 from lampshade_model import LampshadeParams, build_lampshade_steps
 from ripple_texture_model import RippleTextureParams, build_ripple_texture_steps
+from blob_printing_model import BlobPrintingParams, build_blob_printing_steps
 from plotting import plotdata_to_figure
 
 
@@ -314,6 +315,14 @@ def _build_params_from_ui() -> LampshadeParams | RippleTextureParams:
         "RT_ripples_per_layer": 50,
         "RT_rip_depth": 1.0,
         "RT_shape_factor": 1.5,
+
+        # Blob printing defaults (prefixed so switching designs doesn't overwrite other values)
+        "BP_radius": 10.0,
+        "BP_layers": 10,
+        "BP_dense_layers": 2,
+        "BP_blob_width": 1.6,
+        "BP_blob_overlap": 33.0,
+        "BP_extrusion_speed": 100.0,
     }
     _ensure_defaults(defaults)
 
@@ -322,7 +331,7 @@ def _build_params_from_ui() -> LampshadeParams | RippleTextureParams:
 
         design = st.selectbox(
             "Design",
-            ["Lampshade", "Ripple texture"],
+            ["Lampshade", "Ripple texture", "Blob printing"],
             key="Design",
         )
         if st.session_state.get("_design_last") != design:
@@ -555,7 +564,7 @@ def _build_params_from_ui() -> LampshadeParams | RippleTextureParams:
                     help="Where the shade is centered on the build plate.",
                     key="Centre_XY",
                 )
-        else:
+        elif design == "Ripple texture":
             with st.expander("Body", expanded=True):
                 rt_inner_rad = st.number_input(
                     "Inner radius (mm)",
@@ -641,6 +650,50 @@ def _build_params_from_ui() -> LampshadeParams | RippleTextureParams:
                     help="Higher values make tips sharper/more pointy.",
                     key="RT_shape_factor",
                 )
+        else:
+            with st.expander("Blob printing", expanded=True):
+                bp_radius = st.slider(
+                    "Radius (mm)",
+                    min_value=5.0,
+                    max_value=15.0,
+                    step=0.5,
+                    key="BP_radius",
+                )
+                bp_layers = st.slider(
+                    "Layers",
+                    min_value=4,
+                    max_value=20,
+                    step=1,
+                    key="BP_layers",
+                )
+                bp_dense_layers = st.slider(
+                    "Dense Top/Bottom Layers",
+                    min_value=0,
+                    max_value=10,
+                    step=1,
+                    key="BP_dense_layers",
+                )
+                bp_blob_width = st.number_input(
+                    "Blob Width (mm)",
+                    min_value=0.1,
+                    max_value=10.0,
+                    step=0.1,
+                    key="BP_blob_width",
+                )
+                bp_blob_overlap = st.number_input(
+                    "Blob Overlap (%)",
+                    min_value=0.0,
+                    max_value=100.0,
+                    step=1.0,
+                    key="BP_blob_overlap",
+                )
+                bp_extrusion_speed = st.number_input(
+                    "Extrusion Speed (mm/min-or-mm3/min)",
+                    min_value=0.0,
+                    max_value=10000.0,
+                    step=10.0,
+                    key="BP_extrusion_speed",
+                )
 
         with st.expander("Controls", expanded=True):
             output = st.selectbox(
@@ -725,7 +778,7 @@ def _build_params_from_ui() -> LampshadeParams | RippleTextureParams:
         st.session_state.last_result = None
 
     if design == "Lampshade":
-        params: LampshadeParams | RippleTextureParams = LampshadeParams(
+        params: LampshadeParams | RippleTextureParams | BlobPrintingParams = LampshadeParams(
             Output=output,
             Annotations=annotations,
             Printer_name=printer_name,
@@ -765,7 +818,7 @@ def _build_params_from_ui() -> LampshadeParams | RippleTextureParams:
             viewer_point_stride=int(viewer_point_stride),
             viewer_layer_stride=int(viewer_layer_stride),
         )
-    else:
+    elif design == "Ripple texture":
         params = RippleTextureParams(
             Output=output,
             Viewer=viewer_mode,
@@ -795,6 +848,29 @@ def _build_params_from_ui() -> LampshadeParams | RippleTextureParams:
             viewer_point_stride=int(viewer_point_stride),
             viewer_layer_stride=int(viewer_layer_stride),
         )
+    else:
+        params = BlobPrintingParams(
+            Output=output,
+            Viewer=viewer_mode,
+            Annotations=annotations,
+            Printer_name=printer_name,
+            Nozzle_temp=int(nozzle_temp),
+            Bed_temp=int(bed_temp),
+            Fan_percent=int(fan_percent),
+            Material_flow_percent=int(material_flow_percent),
+            Print_speed_percent=int(print_speed_percent),
+            Design_name=design_name,
+            tube_radius=float(st.session_state.get("BP_radius", 10.0)),
+            layers=int(st.session_state.get("BP_layers", 10)),
+            dense_layers=int(st.session_state.get("BP_dense_layers", 2)),
+            blob_size=float(st.session_state.get("BP_blob_width", 1.6)),
+            blob_overlap_percent=float(st.session_state.get("BP_blob_overlap", 33.0)),
+            extrusion_speed=float(st.session_state.get("BP_extrusion_speed", 100.0)),
+            centre_x=50.0,
+            centre_y=50.0,
+            viewer_point_stride=int(viewer_point_stride),
+            viewer_layer_stride=int(viewer_layer_stride),
+        )
 
     # Gate regeneration behind button to keep the app responsive.
     # First run: auto-generate once.
@@ -807,8 +883,10 @@ def _build_params_from_ui() -> LampshadeParams | RippleTextureParams:
             try:
                 if design == "Lampshade":
                     steps, plot_controls, gcode_controls = build_lampshade_steps(params)  # type: ignore[arg-type]
-                else:
+                elif design == "Ripple texture":
                     steps, plot_controls, gcode_controls = build_ripple_texture_steps(params)  # type: ignore[arg-type]
+                else:
+                    steps, plot_controls, gcode_controls = build_blob_printing_steps(params)  # type: ignore[arg-type]
                 st.session_state.last_params = params_key
 
                 if params.Output in ["Simple Plot", "Detailed Plot"]:
