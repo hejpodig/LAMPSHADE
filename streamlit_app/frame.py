@@ -68,3 +68,56 @@ def add_lampshade_frame(
     steps.append(fc.ExtrusionGeometry(width=ew * frame_width_factor, height=eh * layer_ratio))
     steps.append(fc.Printer(print_speed=print_speed / (frame_width_factor * layer_ratio)))
     steps.extend(wave_steps)
+
+
+def add_cardinal_frame(
+    *,
+    steps: list,
+    centre: fc.Point,
+    z: float,
+    frame_rad_inner: float,
+    extent_east: float,
+    extent_west: float,
+    extent_north: float,
+    extent_south: float,
+    ew: float,
+    eh: float,
+    print_speed: float,
+    frame_width_factor: float = 2.5,
+    layer_ratio: int = 2,
+    segs_inner: int = 96,
+) -> None:
+    """Append a centered 4-arm frame aligned to north/south/east/west.
+
+    The arms terminate at the shape's furthest extents in each cardinal
+    direction, so the frame doesn't protrude outside the silhouette.
+    """
+
+    centre_z = fc.Point(x=float(centre.x), y=float(centre.y), z=float(z))
+    inner_r = max(0.0, float(frame_rad_inner))
+
+    east = max(inner_r, float(extent_east))
+    west = max(inner_r, float(extent_west))
+    north = max(inner_r, float(extent_north))
+    south = max(inner_r, float(extent_south))
+
+    steps.append(fc.ExtrusionGeometry(width=float(ew) * float(frame_width_factor), height=float(eh) * int(layer_ratio)))
+    steps.append(fc.Printer(print_speed=float(print_speed) / (float(frame_width_factor) * int(layer_ratio))))
+
+    # Inner ring around the hole.
+    inner_ring = fc.arcXY(centre_z, inner_r, 0.0, tau, int(segs_inner))
+    if len(inner_ring) > 0:
+        steps.extend(fc.travel_to(inner_ring[0]))
+        steps.extend(inner_ring)
+
+    # Cardinal arms: travel to the inner ring point, then extrude outwards.
+    arm_specs = [
+        (fc.Point(x=centre_z.x, y=centre_z.y + inner_r, z=centre_z.z), fc.Point(x=centre_z.x, y=centre_z.y + north, z=centre_z.z)),
+        (fc.Point(x=centre_z.x, y=centre_z.y - inner_r, z=centre_z.z), fc.Point(x=centre_z.x, y=centre_z.y - south, z=centre_z.z)),
+        (fc.Point(x=centre_z.x + inner_r, y=centre_z.y, z=centre_z.z), fc.Point(x=centre_z.x + east, y=centre_z.y, z=centre_z.z)),
+        (fc.Point(x=centre_z.x - inner_r, y=centre_z.y, z=centre_z.z), fc.Point(x=centre_z.x - west, y=centre_z.y, z=centre_z.z)),
+    ]
+
+    for p_inner, p_outer in arm_specs:
+        steps.extend(fc.travel_to(p_inner))
+        steps.append(p_outer)

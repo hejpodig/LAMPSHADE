@@ -5,7 +5,7 @@ from math import cos, sin, tau
 
 import fullcontrol as fc
 
-from frame import add_lampshade_frame
+from frame import add_cardinal_frame
 
 
 @dataclass
@@ -72,29 +72,14 @@ def build_ripple_texture_steps(params: RippleTextureParams) -> tuple[list, fc.Pl
     steps: list = []
     steps.append(fc.Printer(print_speed=print_speed / 2.0))
 
-    # Add the lampshade-style inner frame (4 contact sectors) to help bed adhesion.
-    # Fixed dimensions to match the lampshade defaults.
+    # Add the centered 4-arm base frame aligned to N/S/E/W.
+    # Compute the shape's actual extents on the first layer so arms terminate
+    # exactly at the furthest north/south/east/west points.
     frame_hole_diameter = 30.0
     frame_height = 3.0
-    frame_overlap = 2.5
     frame_rad_inner = (frame_hole_diameter / 2.0) + (ew / 2.0)
-    outer_r_est = float(params.inner_rad) + max(0.0, float(params.tip_length)) + max(0.0, float(params.bulge)) + float(params.rip_depth)
-    frame_rad_max = outer_r_est + frame_overlap
-    frame_layers = int(frame_height / eh) if frame_height > 0 else 0
-    for layer in range(max(0, frame_layers)):
-        add_lampshade_frame(
-            steps=steps,
-            centre=fc.Point(x=0, y=0, z=0),
-            z=float(layer) * float(eh),
-            frame_rad_inner=float(frame_rad_inner),
-            frame_rad_max=float(frame_rad_max),
-            ew=float(ew),
-            eh=float(eh),
-            print_speed=float(print_speed),
-            contact_points=4,
-        )
 
-    centre_now = fc.Point(x=0, y=0, z=0)
+    # Estimate bounds by sampling one full revolution on the first layer.
     inner_rad = float(params.inner_rad)
     rip_depth = float(params.rip_depth)
     tip_length = float(params.tip_length)
@@ -102,6 +87,52 @@ def build_ripple_texture_steps(params: RippleTextureParams) -> tuple[list, fc.Pl
     shape_factor = float(params.shape_factor)
     skew_percent = float(params.skew_percent)
     star_tips = int(params.star_tips)
+    a_scale = 1.0 + (skew_percent / 100.0) / max(layers, 1)
+
+    min_x = 0.0
+    max_x = 0.0
+    min_y = 0.0
+    max_y = 0.0
+    for t in range(int(layer_segs)):
+        t_val = t / float(layer_segs)
+        a_now = (t_val * tau * a_scale) - (tau / 4.0)
+        ripple_wave = rip_depth * (0.5 + (0.5 * cos((ripples_per_layer + 0.5) * (t_val * tau))))
+        star_wave = tip_length * (0.5 - 0.5 * cos(star_tips * (t_val * tau))) ** shape_factor if star_tips else 0.0
+        bulge_wave = 0.0  # z==0
+        r_now = inner_rad + ripple_wave + star_wave + bulge_wave
+        x = r_now * cos(a_now)
+        y = r_now * sin(a_now)
+        if t == 0:
+            min_x = max_x = x
+            min_y = max_y = y
+        else:
+            min_x = min(min_x, x)
+            max_x = max(max_x, x)
+            min_y = min(min_y, y)
+            max_y = max(max_y, y)
+
+    extent_east = max_x
+    extent_west = -min_x
+    extent_north = max_y
+    extent_south = -min_y
+
+    frame_layers = int(frame_height / eh) if frame_height > 0 else 0
+    for layer in range(max(0, frame_layers)):
+        add_cardinal_frame(
+            steps=steps,
+            centre=fc.Point(x=0, y=0, z=0),
+            z=float(layer) * float(eh),
+            frame_rad_inner=float(frame_rad_inner),
+            extent_east=float(extent_east),
+            extent_west=float(extent_west),
+            extent_north=float(extent_north),
+            extent_south=float(extent_south),
+            ew=float(ew),
+            eh=float(eh),
+            print_speed=float(print_speed),
+        )
+
+    centre_now = fc.Point(x=0, y=0, z=0)
     first_layer_E_factor = float(params.first_layer_E_factor)
 
     total_steps = layers * layer_segs

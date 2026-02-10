@@ -7,7 +7,7 @@ from math import cos, exp, pi, sin, tau
 import fullcontrol as fc
 import lab.fullcontrol as fclab
 
-from frame import add_lampshade_frame
+from frame import add_cardinal_frame
 
 
 @dataclass(frozen=True)
@@ -194,23 +194,31 @@ def build_lampshade_steps(params: LampshadeParams):
             (target == "gcode" and layer % params.layer_ratio == params.layer_ratio - 1 and layer < frame_layers)
             or (target == "visualize" and layer == 0 and frame_height > 0)
         ):
-            # Lampshade frame: force 4 contact sectors regardless of star tip count.
-            add_lampshade_frame(
+            min_x = min(p.x for p in shell_steps)
+            max_x = max(p.x for p in shell_steps)
+            min_y = min(p.y for p in shell_steps)
+            max_y = max(p.y for p in shell_steps)
+
+            extent_east = max_x - centre_now.x
+            extent_west = centre_now.x - min_x
+            extent_north = max_y - centre_now.y
+            extent_south = centre_now.y - min_y
+
+            # Lampshade frame: 4 arms aligned to N/S/E/W, terminating at the shell extents.
+            add_cardinal_frame(
                 steps=steps,
                 centre=centre_now,
                 z=z_now,
                 frame_rad_inner=float(frame_rad_inner),
-                frame_rad_max=float(frame_rad_max),
+                extent_east=float(extent_east),
+                extent_west=float(extent_west),
+                extent_north=float(extent_north),
+                extent_south=float(extent_south),
                 ew=float(EW),
                 eh=float(EH),
                 print_speed=float(print_speed),
-                contact_points=4,
-                amp=float(amp_1),
                 frame_width_factor=float(params.frame_width_factor),
-                frame_line_spacing_ratio=float(params.frame_line_spacing_ratio),
                 layer_ratio=int(params.layer_ratio),
-                segs_frame=int(params.segs_frame),
-                start_angle=float(params.start_angle),
             )
 
     steps.append(
