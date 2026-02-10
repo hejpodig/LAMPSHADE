@@ -685,6 +685,8 @@ def _build_params_from_ui() -> LampshadeParams:
         st.plotly_chart(result["fig"], use_container_width=True)
         st.divider()
 
+        st.title("How to")
+
         images_dir = Path(__file__).parent
         image_names = [
             "Frameheight.png",
