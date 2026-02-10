@@ -207,18 +207,6 @@ def build_lampshade_steps(params: LampshadeParams):
             steps.append(fc.Printer(print_speed=print_speed / (params.frame_width_factor * params.layer_ratio)))
             steps.extend(wave_steps)
 
-    if params.Output == "Simple Plot":
-        steps.append(
-            fc.PlotAnnotation(point=fc.Point(x=centre_xy, y=50, z=0), label="Not all layers previewed - nor ripple texture")
-        )
-    if params.Output == "Detailed Plot":
-        steps.append(fc.PlotAnnotation(point=fc.Point(x=centre_xy, y=50, z=0), label="Not all layers previewed"))
-    steps.append(
-        fc.PlotAnnotation(
-            point=fc.Point(x=centre_xy, y=25, z=0),
-            label=f"Speed increases from {params.initial_print_speed} to {params.main_print_speed} mm/min during first {params.speedchange_layers} layers",
-        )
-    )
     steps.append(
         fc.PlotAnnotation(
             point=fc.Point(x=centre_xy, y=0, z=0),
