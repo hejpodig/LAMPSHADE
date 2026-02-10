@@ -691,14 +691,23 @@ def _build_params_from_ui() -> LampshadeParams:
             "topradius.png",
             "Zigzag.png",
         ]
+        image_titles = {
+            "Frameheight.png": "Frame height",
+            "Framehole.png": "Frame Hole",
+            "profile radius.png": "Body Radius",
+            "startiplength.png": "Star tip length",
+            "startips.png": "Star tips",
+            "topradius.png": "Top radius",
+            "Zigzag.png": "ZigZag",
+        }
         image_descriptions = {
-            "Frameheight.png": "**Inner frame height**\n\nControls the height of the printed inner frame/ring at the base. Set to 0 to disable the inner frame.",
-            "Framehole.png": "**Frame hole diameter**\n\nSets the diameter of the central hole in the inner frame/ring. This also constrains the minimum bottom radius so the frame fits.",
-            "profile radius.png": "**Profile radii**\n\nShows how bottom / middle / top radii define the overall silhouette from bottom to top, with the middle radius occurring at the chosen height percentage.",
+            "Frameheight.png": "**Frame height**\n\nControls the height of the printed inner frame/ring at the base. Set to 0 to disable the inner frame.",
+            "Framehole.png": "**Frame Hole**\n\nSets the diameter of the central hole. This should be able to fit your bulb socket.",
+            "profile radius.png": "**Body Radius**\n\nShows how bottom / middle / top radii define the overall silhouette from bottom to top, with the middle radius occurring at the chosen height percentage.",
             "startiplength.png": "**Star tip length**\n\nControls how far each star point extends outward. Higher values make sharper, more pronounced tips.",
-            "startips.png": "**Number of star tips**\n\nControls how many star points are around the perimeter. Set to 0 for a round lampshade.",
+            "startips.png": "**Star tips**\n\nControls how many star points are around the perimeter. Set to 0 for a round lampshade.",
             "topradius.png": "**Top radius**\n\nControls the size of the opening at the top. Larger values widen the lampshade at the top.",
-            "Zigzag.png": "**Zigzags**\n\nAdds a periodic in-and-out ripple around the perimeter. Depth controls how strong it is; frequency controls how many zigzags occur around the circumference.",
+            "Zigzag.png": "**ZigZag**\n\nAdds a periodic in-and-out ripple around the perimeter. Depth controls how strong it is; frequency controls how many zigzags occur around the circumference.",
         }
         images = [(name, images_dir / name) for name in image_names if (images_dir / name).exists()]
         if images:
@@ -708,15 +717,22 @@ def _build_params_from_ui() -> LampshadeParams:
 
             clicked = clickable_images(
                 image_data_uris,
-                titles=[name for name, _ in images],
-                div_style={"display": "flex", "justify-content": "space-between", "flex-wrap": "nowrap"},
-                img_style={"height": "90px", "cursor": "pointer"},
+                titles=[image_titles.get(name, name) for name, _ in images],
+                div_style={
+                    "display": "flex",
+                    "justify-content": "center",
+                    "gap": "12px",
+                    "flex-wrap": "nowrap",
+                    "width": "100%",
+                },
+                img_style={"height": "120px", "cursor": "pointer"},
             )
 
             if clicked is not None and int(clicked) >= 0:
                 image_name, image_path = images[int(clicked)]
+                dialog_title = image_titles.get(image_name, image_name)
 
-                @st.dialog(image_name)
+                @st.dialog(dialog_title)
                 def _show_image_dialog() -> None:
                     st.image(str(image_path), use_container_width=True)
                     desc = image_descriptions.get(image_name)
