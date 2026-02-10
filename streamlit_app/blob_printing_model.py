@@ -81,8 +81,7 @@ def build_blob_printing_steps(params: BlobPrintingParams) -> tuple[list, fc.Plot
     frame_rad_inner = (frame_hole_diameter / 2.0) + (blob_size / 2.0)
     frame_width_factor = 2.5
     frame_margin = (blob_size * frame_width_factor) / 2.0
-    frame_layers = int(frame_height / blob_height) if frame_height > 0 else 0
-    for layer in range(max(0, frame_layers)):
+    if frame_height > 0:
         bbox_min_x = -tube_radius + frame_margin
         bbox_max_x = tube_radius - frame_margin
         bbox_min_y = -tube_radius + frame_margin
@@ -98,7 +97,7 @@ def build_blob_printing_steps(params: BlobPrintingParams) -> tuple[list, fc.Plot
         add_legacy_pattern_frame_clamped(
             steps=steps,
             centre=fc.Point(x=0, y=0, z=0),
-            z=float(layer) * float(blob_height),
+            z=0.0,
             frame_rad_inner=float(frame_rad_inner),
             frame_rad_max=float(frame_rad_max_layer),
             bbox_min_x=float(bbox_min_x),

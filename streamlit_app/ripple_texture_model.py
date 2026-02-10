@@ -90,9 +90,8 @@ def build_ripple_texture_steps(params: RippleTextureParams) -> tuple[list, fc.Pl
     star_tips = int(params.star_tips)
     a_scale = 1.0 + (skew_percent / 100.0) / max(layers, 1)
 
-    frame_layers = int(frame_height / eh) if frame_height > 0 else 0
-    for layer in range(max(0, frame_layers)):
-        z_frame = float(layer) * float(eh)
+    if frame_height > 0:
+        z_frame = 0.0
         # Sample one revolution at this Z to find the true extrema points.
         min_x = max_x = 0.0
         min_y = max_y = 0.0
@@ -102,7 +101,7 @@ def build_ripple_texture_steps(params: RippleTextureParams) -> tuple[list, fc.Pl
         y_at_min_x = 0.0
         found_first = False
 
-        bulge_wave = bulge * (sin((z_frame / height) * (0.5 * tau))) if height else 0.0
+        bulge_wave = 0.0
 
         for t in range(int(layer_segs)):
             t_val = t / float(layer_segs)

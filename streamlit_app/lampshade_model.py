@@ -112,6 +112,8 @@ def build_lampshade_steps(params: LampshadeParams):
         EH = EH * 10
 
     shell_layers = int(height / EH)
+    # Historically the frame was intended as a single thick/slow path at the base.
+    # Keep "frame_layers" for backward compatibility, but print the frame once.
     frame_layers = int(frame_height / EH) if frame_height > 0 else 0
     initial_z = EH * params.initial_z_factor
 
@@ -190,10 +192,7 @@ def build_lampshade_steps(params: LampshadeParams):
 
         steps.extend([fc.ExtrusionGeometry(width=EW, height=EH), fc.Printer(print_speed=print_speed)] + shell_steps)
 
-        if (
-            (target == "gcode" and layer % params.layer_ratio == params.layer_ratio - 1 and layer < frame_layers)
-            or (target == "visualize" and layer == 0 and frame_height > 0)
-        ):
+        if layer == 0 and frame_height > 0:
             min_x = min(p.x for p in shell_steps)
             max_x = max(p.x for p in shell_steps)
             min_y = min(p.y for p in shell_steps)
