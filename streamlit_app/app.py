@@ -689,16 +689,19 @@ def _build_params_from_ui() -> LampshadeParams:
             "topradius.png",
             "Zigzag.png",
         ]
-        for image_name in image_names:
-            image_path = images_dir / image_name
-            if image_path.exists():
-                st.image(str(image_path), use_container_width=True)
-                st.text_area(
-                    "Explanation",
-                    key=f"_img_note::{image_name}",
-                    height=90,
-                    placeholder="Add explanation for this image...",
-                )
+        images = [(name, images_dir / name) for name in image_names if (images_dir / name).exists()]
+        if images:
+            img_cols = st.columns(len(images), gap="small")
+            for col, (image_name, image_path) in zip(img_cols, images):
+                with col:
+                    st.image(str(image_path), use_container_width=True)
+                    st.text_area(
+                        "Explanation",
+                        key=f"_img_note::{image_name}",
+                        height=80,
+                        placeholder="Add explanation...",
+                        label_visibility="collapsed",
+                    )
     elif result["type"] == "gcode":
         st.download_button(
             "Download GCode",
