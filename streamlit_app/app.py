@@ -312,7 +312,7 @@ def _build_params_from_ui() -> LampshadeParams | RippleTextureParams:
         "RT_bulge": 2.0,
         "RT_nozzle_dia": 0.4,
         "RT_ripples_per_layer": 50,
-        "RT_rip_depth": 0.0,
+        "RT_rip_depth": 1.0,
         "RT_shape_factor": 1.5,
     }
     _ensure_defaults(defaults)
@@ -786,7 +786,7 @@ def _build_params_from_ui() -> LampshadeParams | RippleTextureParams:
             bulge=float(st.session_state.get("RT_bulge", 2.0)),
             nozzle_dia=float(st.session_state.get("RT_nozzle_dia", 0.4)),
             ripples_per_layer=int(st.session_state.get("RT_ripples_per_layer", 50)),
-            rip_depth=float(st.session_state.get("RT_rip_depth", 0.0)),
+            rip_depth=float(st.session_state.get("RT_rip_depth", 1.0)),
             shape_factor=float(st.session_state.get("RT_shape_factor", 1.5)),
             ripple_segs=2,
             first_layer_E_factor=0.4,

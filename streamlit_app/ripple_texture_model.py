@@ -33,7 +33,7 @@ class RippleTextureParams:
 
     nozzle_dia: float = 0.4
     ripples_per_layer: int = 50
-    rip_depth: float = 0.0
+    rip_depth: float = 1.0
     shape_factor: float = 1.5
     ripple_segs: int = 2
     first_layer_E_factor: float = 0.4
