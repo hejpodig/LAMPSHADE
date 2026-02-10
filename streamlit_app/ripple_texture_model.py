@@ -24,8 +24,8 @@ class RippleTextureParams:
     Design_name: str = "ripples"
 
     # Design
-    inner_rad: float = 15.0
-    height: float = 40.0
+    inner_rad: float = 75.0
+    height: float = 150.0
     skew_percent: float = 10.0
     star_tips: int = 4
     tip_length: float = 5.0
@@ -38,8 +38,8 @@ class RippleTextureParams:
     ripple_segs: int = 2
     first_layer_E_factor: float = 0.4
 
-    centre_x: float = 50.0
-    centre_y: float = 50.0
+    centre_x: float = 125.0
+    centre_y: float = 125.0
 
     # Viewer sampling (currently unused by the ripple generator, but kept for parity with the app)
     viewer_point_stride: int = 2

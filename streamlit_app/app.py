@@ -265,6 +265,10 @@ def _viewer_presets(viewer_mode: str) -> tuple[int, int]:
 
 
 def _build_params_from_ui() -> LampshadeParams | RippleTextureParams:
+    BUILD_VOL_XY = 250
+    BUILD_VOL_Z = 250
+    BUILD_MAX_RADIUS = BUILD_VOL_XY / 2
+
     defaults = {
         "Design": "Lampshade",
         "Output": "Detailed Plot",
@@ -279,9 +283,9 @@ def _build_params_from_ui() -> LampshadeParams | RippleTextureParams:
         "Design_name": "fc_lampshade",
         "Height": 150,
         "Inner_frame_hole_diameter": 30,
-        "Radius_bottom": 34,
-        "Radius_middle": 34,
-        "Radius_top": 34,
+        "Radius_bottom": 75,
+        "Radius_middle": 75,
+        "Radius_top": 75,
         "Radius_middle_z": 50,
         "Tip_length": 20,
         "Star_tips": 6,
@@ -291,7 +295,7 @@ def _build_params_from_ui() -> LampshadeParams | RippleTextureParams:
         "Twist_turns": 0.0,
         "Inner_frame_height": 3,
         "Inner_frame_wave_amplitude": 17.5,
-        "Centre_XY": 104,
+        "Centre_XY": int(BUILD_VOL_XY / 2),
         "zag_min": 1.0,
         "zag_max": 5.0,
         "zigzag_freq_factor": 1.0,
@@ -305,8 +309,8 @@ def _build_params_from_ui() -> LampshadeParams | RippleTextureParams:
         "initial_z_factor": 0.7,
 
         # Ripple texture defaults (prefixed so switching designs doesn't overwrite Lampshade values)
-        "RT_inner_rad": 15.0,
-        "RT_height": 40,
+        "RT_inner_rad": 75.0,
+        "RT_height": 150,
         "RT_skew_percent": 10.0,
         "RT_star_tips": 4,
         "RT_tip_length": 5.0,
@@ -317,7 +321,7 @@ def _build_params_from_ui() -> LampshadeParams | RippleTextureParams:
         "RT_shape_factor": 1.5,
 
         # Blob printing defaults (prefixed so switching designs doesn't overwrite other values)
-        "BP_radius": 10.0,
+        "BP_radius": 75.0,
         "BP_layers": 10,
         "BP_dense_layers": 2,
         "BP_blob_width": 1.6,
@@ -344,7 +348,7 @@ def _build_params_from_ui() -> LampshadeParams | RippleTextureParams:
                 height = st.slider(
                     "Height (mm)",
                     min_value=100,
-                    max_value=200,
+                    max_value=int(BUILD_VOL_Z),
                     step=10,
                     help="Overall height of the lampshade.",
                     key="Height",
@@ -358,7 +362,7 @@ def _build_params_from_ui() -> LampshadeParams | RippleTextureParams:
                 radius_bottom = st.number_input(
                     "Bottom radius (mm)",
                     min_value=int(min_bottom_radius),
-                    max_value=80,
+                    max_value=int(BUILD_MAX_RADIUS),
                     step=1,
                     help="Base radius at the bottom. Minimum is automatically constrained to fit the inner frame.",
                     key="Radius_bottom",
@@ -366,7 +370,7 @@ def _build_params_from_ui() -> LampshadeParams | RippleTextureParams:
                 radius_middle = st.number_input(
                     "Middle radius (mm)",
                     min_value=10,
-                    max_value=80,
+                    max_value=int(BUILD_MAX_RADIUS),
                     step=1,
                     help="Base radius at the adjustable middle height.",
                     key="Radius_middle",
@@ -374,7 +378,7 @@ def _build_params_from_ui() -> LampshadeParams | RippleTextureParams:
                 radius_top = st.number_input(
                     "Top radius (mm)",
                     min_value=10,
-                    max_value=80,
+                    max_value=int(BUILD_MAX_RADIUS),
                     step=1,
                     help="Base radius at the top.",
                     key="Radius_top",
@@ -391,7 +395,7 @@ def _build_params_from_ui() -> LampshadeParams | RippleTextureParams:
                 inner_frame_hole_diameter = st.number_input(
                     "Frame hole diameter (mm)",
                     min_value=0,
-                    max_value=200,
+                    max_value=int(BUILD_VOL_XY),
                     step=1,
                     help="Diameter of the inner hole in the printed frame/ring.",
                     key="Inner_frame_hole_diameter",
@@ -559,17 +563,29 @@ def _build_params_from_ui() -> LampshadeParams | RippleTextureParams:
                 centre_xy = st.number_input(
                     "Centre position XY (mm)",
                     min_value=0,
-                    max_value=500,
+                    max_value=int(BUILD_VOL_XY),
                     step=1,
                     help="Where the shade is centered on the build plate.",
                     key="Centre_XY",
                 )
+
+                # Clamp centre so the designed footprint stays within the 250x250 bed.
+                # This is a conservative estimate based on the maximum base radius.
+                max_base_radius = max(float(radius_bottom), float(radius_middle), float(radius_top))
+                outer_r_est = max_base_radius
+                centre_min = int(max(0.0, min(BUILD_VOL_XY, outer_r_est)))
+                centre_max = int(max(0.0, min(BUILD_VOL_XY, BUILD_VOL_XY - outer_r_est)))
+                if centre_min <= centre_max:
+                    if float(st.session_state.get("Centre_XY", BUILD_VOL_XY / 2)) < float(centre_min):
+                        st.session_state["Centre_XY"] = int(centre_min)
+                    if float(st.session_state.get("Centre_XY", BUILD_VOL_XY / 2)) > float(centre_max):
+                        st.session_state["Centre_XY"] = int(centre_max)
         elif design == "Ripple texture":
             with st.expander("Body", expanded=False):
                 rt_inner_rad = st.number_input(
                     "Inner radius (mm)",
                     min_value=10.0,
-                    max_value=30.0,
+                    max_value=float(BUILD_MAX_RADIUS),
                     step=0.5,
                     help="Base radius that other features morph outwards from.",
                     key="RT_inner_rad",
@@ -577,7 +593,7 @@ def _build_params_from_ui() -> LampshadeParams | RippleTextureParams:
                 rt_height = st.slider(
                     "Height (mm)",
                     min_value=20,
-                    max_value=80,
+                    max_value=int(BUILD_VOL_Z),
                     step=5,
                     help="Height of the part.",
                     key="RT_height",
@@ -652,10 +668,12 @@ def _build_params_from_ui() -> LampshadeParams | RippleTextureParams:
                 )
         else:
             with st.expander("Blob printing", expanded=False):
+                blob_width_now = float(st.session_state.get("BP_blob_width", 1.6))
+                max_bp_radius = max(5.0, float(BUILD_MAX_RADIUS) - (blob_width_now / 2.0))
                 bp_radius = st.slider(
                     "Radius (mm)",
                     min_value=5.0,
-                    max_value=15.0,
+                    max_value=float(max_bp_radius),
                     step=0.5,
                     value=float(st.session_state.get("BP_radius", 10.0)),
                     key="BP_radius",
@@ -663,7 +681,7 @@ def _build_params_from_ui() -> LampshadeParams | RippleTextureParams:
                 bp_layers = st.slider(
                     "Layers",
                     min_value=4,
-                    max_value=20,
+                    max_value=250,
                     step=1,
                     value=int(st.session_state.get("BP_layers", 10)),
                     key="BP_layers",
@@ -671,7 +689,7 @@ def _build_params_from_ui() -> LampshadeParams | RippleTextureParams:
                 bp_dense_layers = st.slider(
                     "Dense Top/Bottom Layers",
                     min_value=0,
-                    max_value=10,
+                    max_value=125,
                     step=1,
                     value=int(st.session_state.get("BP_dense_layers", 2)),
                     key="BP_dense_layers",
@@ -679,7 +697,7 @@ def _build_params_from_ui() -> LampshadeParams | RippleTextureParams:
                 bp_blob_width = st.number_input(
                     "Blob Width (mm)",
                     min_value=0.1,
-                    max_value=10.0,
+                    max_value=250.0,
                     step=0.1,
                     value=float(st.session_state.get("BP_blob_width", 1.6)),
                     key="BP_blob_width",
@@ -849,8 +867,8 @@ def _build_params_from_ui() -> LampshadeParams | RippleTextureParams:
             shape_factor=float(st.session_state.get("RT_shape_factor", 1.5)),
             ripple_segs=2,
             first_layer_E_factor=0.4,
-            centre_x=50.0,
-            centre_y=50.0,
+            centre_x=float(BUILD_VOL_XY / 2),
+            centre_y=float(BUILD_VOL_XY / 2),
             viewer_point_stride=int(viewer_point_stride),
             viewer_layer_stride=int(viewer_layer_stride),
         )
@@ -872,8 +890,8 @@ def _build_params_from_ui() -> LampshadeParams | RippleTextureParams:
             blob_size=float(st.session_state.get("BP_blob_width", 1.6)),
             blob_overlap_percent=float(st.session_state.get("BP_blob_overlap", 33.0)),
             extrusion_speed=float(st.session_state.get("BP_extrusion_speed", 100.0)),
-            centre_x=50.0,
-            centre_y=50.0,
+            centre_x=float(BUILD_VOL_XY / 2),
+            centre_y=float(BUILD_VOL_XY / 2),
             viewer_point_stride=int(viewer_point_stride),
             viewer_layer_stride=int(viewer_layer_stride),
         )

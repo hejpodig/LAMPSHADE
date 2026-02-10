@@ -23,7 +23,7 @@ class BlobPrintingParams:
     Design_name: str = "blobs"
 
     # Design (matches fullcontrol/models/blob_printing.ipynb)
-    tube_radius: float = 10.0
+    tube_radius: float = 75.0
     layers: int = 10
     dense_layers: int = 2
 
@@ -31,8 +31,8 @@ class BlobPrintingParams:
     blob_overlap_percent: float = 33.0
     extrusion_speed: float = 100.0
 
-    centre_x: float = 50.0
-    centre_y: float = 50.0
+    centre_x: float = 125.0
+    centre_y: float = 125.0
 
     # Viewer sampling (kept for parity with the app)
     viewer_point_stride: int = 2
