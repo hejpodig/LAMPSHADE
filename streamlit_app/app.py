@@ -657,6 +657,7 @@ def _build_params_from_ui() -> LampshadeParams | RippleTextureParams:
                     min_value=5.0,
                     max_value=15.0,
                     step=0.5,
+                    value=float(st.session_state.get("BP_radius", 10.0)),
                     key="BP_radius",
                 )
                 bp_layers = st.slider(
@@ -664,6 +665,7 @@ def _build_params_from_ui() -> LampshadeParams | RippleTextureParams:
                     min_value=4,
                     max_value=20,
                     step=1,
+                    value=int(st.session_state.get("BP_layers", 10)),
                     key="BP_layers",
                 )
                 bp_dense_layers = st.slider(
@@ -671,6 +673,7 @@ def _build_params_from_ui() -> LampshadeParams | RippleTextureParams:
                     min_value=0,
                     max_value=10,
                     step=1,
+                    value=int(st.session_state.get("BP_dense_layers", 2)),
                     key="BP_dense_layers",
                 )
                 bp_blob_width = st.number_input(
@@ -678,6 +681,7 @@ def _build_params_from_ui() -> LampshadeParams | RippleTextureParams:
                     min_value=0.1,
                     max_value=10.0,
                     step=0.1,
+                    value=float(st.session_state.get("BP_blob_width", 1.6)),
                     key="BP_blob_width",
                 )
                 bp_blob_overlap = st.number_input(
@@ -685,6 +689,7 @@ def _build_params_from_ui() -> LampshadeParams | RippleTextureParams:
                     min_value=0.0,
                     max_value=100.0,
                     step=1.0,
+                    value=float(st.session_state.get("BP_blob_overlap", 33.0)),
                     key="BP_blob_overlap",
                 )
                 bp_extrusion_speed = st.number_input(
@@ -692,6 +697,7 @@ def _build_params_from_ui() -> LampshadeParams | RippleTextureParams:
                     min_value=0.0,
                     max_value=10000.0,
                     step=10.0,
+                    value=float(st.session_state.get("BP_extrusion_speed", 100.0)),
                     key="BP_extrusion_speed",
                 )
 
