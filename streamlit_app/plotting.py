@@ -49,7 +49,9 @@ def plotdata_to_figure(data: PlotData, controls: PlotControls) -> go.Figure:
         for annotation in data.annotations:
             x, y, z = (annotation[axis] for axis in "xyz")
             annotations_pts.append((x, y, z))
-            annotations.append(dict(showarrow=False, x=x, y=y, z=z, text=annotation["label"], yshift=10))
+            label = annotation.get("label", "")
+            if str(label).strip():
+                annotations.append(dict(showarrow=False, x=x, y=y, z=z, text=label, yshift=10))
 
         if annotations_pts:
             xs, ys, zs = zip(*annotations_pts)
