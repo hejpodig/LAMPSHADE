@@ -710,19 +710,14 @@ def _build_params_from_ui() -> LampshadeParams:
                 @st.dialog(image_name)
                 def _show_image_dialog() -> None:
                     st.image(str(image_path), use_container_width=True)
+                    st.text_area(
+                        "Description",
+                        key=f"_img_note::{image_name}",
+                        height=140,
+                        placeholder="Add a description for this image...",
+                    )
 
                 _show_image_dialog()
-
-            note_cols = st.columns(len(images), gap="small")
-            for col, (image_name, _) in zip(note_cols, images):
-                with col:
-                    st.text_area(
-                        "Explanation",
-                        key=f"_img_note::{image_name}",
-                        height=80,
-                        placeholder="Add explanation...",
-                        label_visibility="collapsed",
-                    )
     elif result["type"] == "gcode":
         st.download_button(
             "Download GCode",
