@@ -1,6 +1,7 @@
 import json
 import hashlib
 import sys
+import base64
 from dataclasses import asdict
 from datetime import datetime, timezone
 from pathlib import Path
@@ -694,7 +695,13 @@ def _build_params_from_ui() -> LampshadeParams:
             img_cols = st.columns(len(images), gap="small")
             for col, (image_name, image_path) in zip(img_cols, images):
                 with col:
-                    st.image(str(image_path), use_container_width=True)
+                    # Make the thumbnail clickable (opens full-size image in a new tab).
+                    image_bytes = image_path.read_bytes()
+                    data_uri = f"data:image/png;base64,{base64.b64encode(image_bytes).decode('utf-8')}"
+                    st.markdown(
+                        f'<a href="{data_uri}" target="_blank"><img src="{data_uri}" style="width:100%; height:auto;"/></a>',
+                        unsafe_allow_html=True,
+                    )
                     st.text_area(
                         "Explanation",
                         key=f"_img_note::{image_name}",
