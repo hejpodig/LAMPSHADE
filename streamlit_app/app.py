@@ -298,7 +298,7 @@ def _build_params_from_ui() -> LampshadeParams:
     with st.sidebar:
         generate = st.button("Generate / Update", type="primary", use_container_width=True)
 
-        with st.expander("Geometry", expanded=True):
+        with st.expander("Body", expanded=True):
             height = st.slider(
                 "Height (mm)",
                 min_value=100,
@@ -308,17 +308,11 @@ def _build_params_from_ui() -> LampshadeParams:
                 key="Height",
             )
 
-            inner_frame_hole_diameter = st.number_input(
-                "Inner frame hole diameter (mm)",
-                min_value=0,
-                max_value=200,
-                step=1,
-                help="Diameter of the inner hole in the printed frame/ring.",
-                key="Inner_frame_hole_diameter",
-            )
-            min_bottom_radius = max(10, int((float(inner_frame_hole_diameter) / 2.0) + 2.0))
+            frame_hole_diameter_now = float(st.session_state.get("Inner_frame_hole_diameter", 0))
+            min_bottom_radius = max(10, int((frame_hole_diameter_now / 2.0) + 2.0))
             if float(st.session_state.get("Radius_bottom", 0)) < float(min_bottom_radius):
                 st.session_state["Radius_bottom"] = int(min_bottom_radius)
+
             radius_bottom = st.number_input(
                 "Bottom radius (mm)",
                 min_value=int(min_bottom_radius),
@@ -352,6 +346,33 @@ def _build_params_from_ui() -> LampshadeParams:
                 key="Radius_middle_z",
             )
 
+            inner_frame_hole_diameter = st.number_input(
+                "Frame hole diameter (mm)",
+                min_value=0,
+                max_value=200,
+                step=1,
+                help="Diameter of the inner hole in the printed frame/ring.",
+                key="Inner_frame_hole_diameter",
+            )
+            inner_frame_height = st.slider(
+                "Inner frame height (mm)",
+                min_value=0,
+                max_value=10,
+                step=1,
+                help="0 disables the inner frame.",
+                key="Inner_frame_height",
+            )
+
+        with st.expander("Shape", expanded=True):
+            st.markdown("**Star tips**")
+            star_tips = st.slider(
+                "Number of star tips",
+                min_value=0,
+                max_value=8,
+                step=1,
+                help="0 disables the star pattern (round shade).",
+                key="Star_tips",
+            )
             tip_length = st.slider(
                 "Star tip length",
                 min_value=10,
@@ -360,13 +381,23 @@ def _build_params_from_ui() -> LampshadeParams:
                 help="How long each star point extends outwards (mm).",
                 key="Tip_length",
             )
-            star_tips = st.slider(
-                "Number of star tips",
+            twist_turns = st.slider(
+                "Twist (turns bottom→top)",
+                min_value=-2.0,
+                max_value=2.0,
+                step=0.05,
+                help="Applies twist to the shell. The inner frame stays untwisted.",
+                key="Twist_turns",
+            )
+
+            st.markdown("**Bulge**")
+            secondary_bulge_count = st.slider(
+                "Bulge count",
                 min_value=0,
-                max_value=8,
+                max_value=6,
                 step=1,
-                help="0 disables the star pattern (round shade).",
-                key="Star_tips",
+                help="0 disables secondary bulges.",
+                key="Secondary_bulge_count",
             )
             main_bulge = st.slider(
                 "Main bulge amplitude (mm)",
@@ -383,46 +414,6 @@ def _build_params_from_ui() -> LampshadeParams:
                 step=2.5,
                 help="Controls the smaller bulges along the height.",
                 key="Secondary_bulges",
-            )
-            secondary_bulge_count = st.slider(
-                "Secondary bulge count",
-                min_value=0,
-                max_value=6,
-                step=1,
-                help="0 disables secondary bulges.",
-                key="Secondary_bulge_count",
-            )
-            twist_turns = st.slider(
-                "Twist (turns bottom→top)",
-                min_value=-2.0,
-                max_value=2.0,
-                step=0.05,
-                help="Applies twist to the shell. The inner frame stays untwisted.",
-                key="Twist_turns",
-            )
-            inner_frame_height = st.slider(
-                "Inner frame height (mm)",
-                min_value=0,
-                max_value=10,
-                step=1,
-                help="0 disables the inner frame.",
-                key="Inner_frame_height",
-            )
-            inner_frame_wave_amplitude = st.number_input(
-                "Inner frame wave amplitude (mm)",
-                min_value=0.0,
-                max_value=200.0,
-                step=0.5,
-                help="Amplitude of the wavy inner frame lines.",
-                key="Inner_frame_wave_amplitude",
-            )
-            centre_xy = st.number_input(
-                "Centre position XY (mm)",
-                min_value=0,
-                max_value=500,
-                step=1,
-                help="Where the shade is centered on the build plate.",
-                key="Centre_XY",
             )
 
         with st.expander("Zigzags", expanded=True):
@@ -513,6 +504,23 @@ def _build_params_from_ui() -> LampshadeParams:
                 step=0.05,
                 help="Scales the first layer Z (lower = more squish).",
                 key="initial_z_factor",
+            )
+
+            inner_frame_wave_amplitude = st.number_input(
+                "Inner frame wave amplitude (mm)",
+                min_value=0.0,
+                max_value=200.0,
+                step=0.5,
+                help="Amplitude of the wavy inner frame lines.",
+                key="Inner_frame_wave_amplitude",
+            )
+            centre_xy = st.number_input(
+                "Centre position XY (mm)",
+                min_value=0,
+                max_value=500,
+                step=1,
+                help="Where the shade is centered on the build plate.",
+                key="Centre_XY",
             )
 
         with st.expander("Controls", expanded=True):
